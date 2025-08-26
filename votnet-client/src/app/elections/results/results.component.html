@@ -1,0 +1,10 @@
+<div *ngIf="results as r">
+  <h2>{{r.name}}</h2>
+  <div *ngFor="let q of r.questions">
+    <h3>{{q.text}}</h3>
+    <div *ngFor="let o of q.options">
+      <div>{{o.text}} - {{o.votes}}</div>
+      <mat-progress-bar [value]="o.votes"></mat-progress-bar>
+    </div>
+  </div>
+</div>

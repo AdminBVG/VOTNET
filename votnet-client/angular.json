@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json.schemastore.org/angular-cli",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "votnet-client": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:browser",
+          "options": {
+            "outputPath": "dist/votnet-client",
+            "index": "src/index.html",
+            "main": "src/main.ts",
+            "polyfills": [],
+            "tsConfig": "tsconfig.app.json",
+            "assets": ["src/favicon.ico", "src/assets"],
+            "styles": ["src/styles.css"],
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "budgets": [{
+                "type": "initial",
+                "maximumWarning": "500kb",
+                "maximumError": "1mb"
+              }],
+              "outputHashing": "all"
+            }
+          }
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "browserTarget": "votnet-client:build"
+          }
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "src/test.ts",
+            "polyfills": [],
+            "tsConfig": "tsconfig.spec.json",
+            "karmaConfig": "karma.conf.js",
+            "scripts": [],
+            "styles": ["src/styles.css"],
+            "assets": ["src/favicon.ico", "src/assets"]
+          }
+        }
+      }
+    }
+  },
+  "defaultProject": "votnet-client"
+}
