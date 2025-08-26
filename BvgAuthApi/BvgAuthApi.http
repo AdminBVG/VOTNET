@@ -1,0 +1,6 @@
+@BvgAuthApi_HostAddress = http://localhost:5228
+
+GET {{BvgAuthApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

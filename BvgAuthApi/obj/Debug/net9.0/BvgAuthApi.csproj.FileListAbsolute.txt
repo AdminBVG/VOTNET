@@ -1,0 +1,7 @@
+C:\Proyect\NET\BvgAuthApi\obj\Debug\net9.0\BvgAuthApi.csproj.AssemblyReference.cache
+C:\Proyect\NET\BvgAuthApi\obj\Debug\net9.0\BvgAuthApi.GeneratedMSBuildEditorConfig.editorconfig
+C:\Proyect\NET\BvgAuthApi\obj\Debug\net9.0\BvgAuthApi.AssemblyInfoInputs.cache
+C:\Proyect\NET\BvgAuthApi\obj\Debug\net9.0\BvgAuthApi.AssemblyInfo.cs
+C:\Proyect\NET\BvgAuthApi\obj\Debug\net9.0\BvgAuthApi.csproj.CoreCompileInputs.cache
+C:\Proyect\NET\BvgAuthApi\obj\Debug\net9.0\BvgAuthApi.MvcApplicationPartsAssemblyInfo.cs
+C:\Proyect\NET\BvgAuthApi\obj\Debug\net9.0\BvgAuthApi.MvcApplicationPartsAssemblyInfo.cache
