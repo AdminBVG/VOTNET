@@ -55,6 +55,9 @@ builder.Services.AddAuthorization(opt =>
     opt.AddPolicy(AppRoles.GlobalAdmin, p => p.RequireRole(AppRoles.GlobalAdmin));
     opt.AddPolicy(AppRoles.VoteAdmin,   p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
     opt.AddPolicy(AppRoles.VoteOperator,p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.VoteOperator));
+    opt.AddPolicy(AppRoles.ElectionRegistrar, p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.ElectionRegistrar));
+    opt.AddPolicy(AppRoles.ElectionObserver,  p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.ElectionObserver));
+    opt.AddPolicy(AppRoles.ElectionVoter,     p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.ElectionVoter));
 });
 
 builder.Services.AddSignalR();

@@ -15,7 +15,7 @@ namespace BvgAuthApi.Seed
             var um  = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
             // Roles
-            foreach (var r in new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.VoteOperator })
+            foreach (var r in new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.VoteOperator, AppRoles.ElectionRegistrar, AppRoles.ElectionObserver, AppRoles.ElectionVoter })
                 if (!await rm.RoleExistsAsync(r)) await rm.CreateAsync(new IdentityRole(r));
 
             // Admin
