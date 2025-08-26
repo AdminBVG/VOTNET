@@ -1,0 +1,27 @@
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-form-field appearance="fill">
+    <mat-label>Name</mat-label>
+    <input matInput formControlName="name">
+  </mat-form-field>
+  <div formArrayName="questions">
+    <div *ngFor="let q of questions.controls; let i = index" [formGroupName]="i">
+      <h3>Question {{i + 1}}</h3>
+      <mat-form-field appearance="fill">
+        <mat-label>Text</mat-label>
+        <input matInput formControlName="text">
+      </mat-form-field>
+      <div formArrayName="options">
+        <div *ngFor="let o of options(i).controls; let j = index">
+          <mat-form-field appearance="fill">
+            <mat-label>Option {{j + 1}}</mat-label>
+            <input matInput [formControlName]="j">
+          </mat-form-field>
+        </div>
+      </div>
+      <button mat-button type="button" (click)="addOption(i)">Add Option</button>
+    </div>
+  </div>
+  <button mat-button type="button" (click)="addQuestion()">Add Question</button>
+  <input type="file" (change)="onFileChange($event)">
+  <button mat-raised-button color="primary" type="submit">Save</button>
+</form>
