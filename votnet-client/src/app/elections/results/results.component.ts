@@ -22,6 +22,11 @@ export class ResultsComponent implements OnInit {
 
   load(): void {
     const id = this.route.snapshot.paramMap.get('id');
-    this.http.get(`${environment.apiBaseUrl}/elections/${id}/results`).subscribe(res => this.results = res);
+    this.http.get<any>(`${environment.apiBaseUrl}/elections/${id}/results`).subscribe(res => {
+      res.questions.forEach((q: any) => {
+        q.totalVotes = q.options.reduce((s: number, o: any) => s + o.votes, 0);
+      });
+      this.results = res;
+    });
   }
 }

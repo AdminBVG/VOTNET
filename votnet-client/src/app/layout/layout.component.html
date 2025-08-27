@@ -1,9 +1,10 @@
 <mat-sidenav-container class="sidenav-container">
   <mat-sidenav #drawer mode="side" opened>
     <mat-nav-list>
-      <a mat-list-item routerLink="/elections">Elections</a>
-      <a mat-list-item routerLink="/users">Users</a>
-      <a mat-list-item routerLink="/login">Login</a>
+      <a mat-list-item routerLink="/elections" *ngIf="auth.isLoggedIn">Elections</a>
+      <a mat-list-item routerLink="/users" *ngIf="auth.hasRole('GlobalAdmin') || auth.hasRole('VoteAdmin')">Users</a>
+      <a mat-list-item routerLink="/login" *ngIf="!auth.isLoggedIn">Login</a>
+      <a mat-list-item (click)="logout()" *ngIf="auth.isLoggedIn">Logout</a>
     </mat-nav-list>
   </mat-sidenav>
 
