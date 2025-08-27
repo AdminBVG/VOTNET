@@ -35,7 +35,7 @@ namespace BvgAuthApi.Endpoints
                 db.Elections.Add(e);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/elections/{e.Id}", new { e.Id });
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             g.MapGet("/", async (BvgDbContext db) =>
                 Results.Ok(await db.Elections.AsNoTracking()
@@ -43,19 +43,34 @@ namespace BvgAuthApi.Endpoints
                         e.Id, e.Name, e.Details, e.ScheduledAt, e.QuorumMinimo,
                         Questions = e.Questions.Select(q => new { q.Id, q.Text, Options = q.Options.Select(o => new { o.Id, o.Text }) })
                     }).ToListAsync()))
-                .RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin}");
+                .RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             g.MapPost("/{id}/padron", async (Guid id, IFormFile file, BvgDbContext db) =>
             {
+                const long maxFileSize = 5 * 1024 * 1024; // 5MB
+                const int maxRows = 1000;
+
+                if (file.Length == 0 || file.Length > maxFileSize)
+                    return Results.BadRequest("Archivo demasiado grande.");
+
                 var election = await db.Elections.Include(x => x.Padron).FirstOrDefaultAsync(x => x.Id == id);
                 if (election is null) return Results.NotFound();
+
                 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
                 using var ms = new MemoryStream();
                 await file.CopyToAsync(ms);
+                ms.Position = 0;
                 using var pkg = new ExcelPackage(ms);
                 var ws = pkg.Workbook.Worksheets.First();
+
                 for (int row = 2; ws.Cells[row,1].Value != null; row++)
                 {
+                    if (row - 1 > maxRows)
+                        return Results.BadRequest("Cantidad de filas excede el máximo permitido.");
+
+                    if (!decimal.TryParse(ws.Cells[row,5].Text, out var shares))
+                        return Results.BadRequest($"Valor de acciones inválido en la fila {row}.");
+
                     var entry = new PadronEntry
                     {
                         ElectionId = id,
@@ -63,13 +78,13 @@ namespace BvgAuthApi.Endpoints
                         ShareholderName = ws.Cells[row,2].Text,
                         LegalRepresentative = ws.Cells[row,3].Text,
                         Proxy = ws.Cells[row,4].Text,
-                        Shares = decimal.TryParse(ws.Cells[row,5].Text, out var s) ? s : 0
+                        Shares = shares
                     };
                     election.Padron.Add(entry);
                 }
                 await db.SaveChangesAsync();
                 return Results.Ok();
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             g.MapPost("/{id}/assignments", async (Guid id, [FromBody] AssignmentDto dto, BvgDbContext db) =>
             {
@@ -83,7 +98,7 @@ namespace BvgAuthApi.Endpoints
                 });
                 await db.SaveChangesAsync();
                 return Results.Ok();
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             g.MapGet("/{id}/assignments", async (Guid id, BvgDbContext db) =>
             {
@@ -92,7 +107,7 @@ namespace BvgAuthApi.Endpoints
                     .Select(a => new { a.Id, a.UserId, a.Role })
                     .ToListAsync();
                 return Results.Ok(items);
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             g.MapDelete("/{id}/assignments/{assignmentId}", async (Guid id, Guid assignmentId, BvgDbContext db) =>
             {
@@ -101,7 +116,7 @@ namespace BvgAuthApi.Endpoints
                 db.ElectionUserAssignments.Remove(assignment);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             g.MapGet("/{id}/padron/template", () =>
             {
@@ -115,7 +130,7 @@ namespace BvgAuthApi.Endpoints
                 ws.Cells[1,5].Value = "Acciones";
                 var bytes = pkg.GetAsByteArray();
                 return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "padron.xlsx");
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             g.MapPost("/{id}/attendance/{padronId}", async (Guid id, Guid padronId, [FromBody] AttendanceDto dto, BvgDbContext db, IHubContext<LiveHub> hub, ClaimsPrincipal user) =>
             {
@@ -150,7 +165,7 @@ namespace BvgAuthApi.Endpoints
                 var total = election.Padron.Sum(p => p.Shares);
                 var present = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                 return Results.Ok(new { Total = total, Present = present, Quorum = total == 0 ? 0 : present / total });
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin},{AppRoles.ElectionObserver},{AppRoles.ElectionRegistrar}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.ElectionObserver, AppRoles.ElectionRegistrar));
 
             g.MapPost("/{id}/votes", async (Guid id, [FromBody] VoteDto dto, BvgDbContext db, IHubContext<LiveHub> hub, ClaimsPrincipal user) =>
             {
@@ -201,7 +216,7 @@ namespace BvgAuthApi.Endpoints
                     })
                 });
                 return Results.Ok(results);
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin},{AppRoles.ElectionObserver}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.ElectionObserver));
 
             g.MapPost("/{id}/close", async (Guid id, BvgDbContext db) =>
             {
@@ -210,7 +225,7 @@ namespace BvgAuthApi.Endpoints
                 election.IsClosed = true;
                 await db.SaveChangesAsync();
                 return Results.Ok();
-            }).RequireAuthorization($"{AppRoles.GlobalAdmin},{AppRoles.VoteAdmin}");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             return app;
         }
