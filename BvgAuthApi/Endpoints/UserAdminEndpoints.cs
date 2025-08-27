@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using BvgAuthApi.Data;
 using BvgAuthApi.Models;
 
@@ -22,8 +23,8 @@ namespace BvgAuthApi.Endpoints
                 return Results.Created($"/api/users/{u.Id}", new { u.Id, u.UserName, dto.Role });
             });
 
-            g.MapGet("/", (UserManager<ApplicationUser> um) =>
-                Results.Ok(um.Users.Select(u => new { u.Id, u.UserName, u.Email, u.IsActive }).ToList()));
+            g.MapGet("/", async (UserManager<ApplicationUser> um) =>
+                Results.Ok(await um.Users.Select(u => new { u.Id, u.UserName, u.Email, u.IsActive }).ToListAsync()));
 
             return app;
         }
