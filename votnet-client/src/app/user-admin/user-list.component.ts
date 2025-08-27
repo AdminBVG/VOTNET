@@ -1,6 +1,6 @@
 import { Component, Inject } from '@angular/core';
 import { MatDialog, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { FormBuilder, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
@@ -52,12 +52,14 @@ export class UserListComponent {
   </div>`
 })
 export class UserDialogComponent {
-  form = this.fb.group({
-    username: ['', Validators.required],
-    password: ['', Validators.required]
-  });
+  form: FormGroup;
 
-  constructor(private fb: FormBuilder, private http: HttpClient, private dialogRef: MatDialogRef<UserDialogComponent>) {}
+  constructor(private fb: FormBuilder, private http: HttpClient, public dialogRef: MatDialogRef<UserDialogComponent>) {
+    this.form = this.fb.group({
+      username: ['', Validators.required],
+      password: ['', Validators.required]
+    });
+  }
 
   save(): void {
     if (this.form.invalid) return;

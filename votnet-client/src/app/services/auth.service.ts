@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Observable, throwError } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
+import { tap, catchError, map } from 'rxjs/operators';
 
 type LoginRequest = { username: string; password: string };
 
@@ -21,6 +21,7 @@ export class AuthService {
           this._token = res.token;
           sessionStorage.setItem(this.tokenKey, res.token);
         }),
+        map(() => void 0),
         catchError((err: HttpErrorResponse) => throwError(() => err))
       );
   }
