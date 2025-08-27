@@ -18,8 +18,12 @@ export class LoginComponent {
 
   submit(): void {
     if (this.form.invalid) return;
-    this.auth.login(this.form.value as any).subscribe(() => {
-      this.router.navigate(['/']);
+    this.error = '';
+    this.auth.login(this.form.value as any).subscribe({
+      next: () => this.router.navigate(['/']),
+      error: () => (this.error = 'Invalid credentials')
     });
   }
+
+  error = '';
 }

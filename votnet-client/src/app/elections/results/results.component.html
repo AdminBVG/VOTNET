@@ -3,8 +3,8 @@
   <div *ngFor="let q of r.questions">
     <h3>{{q.text}}</h3>
     <div *ngFor="let o of q.options">
-      <div>{{o.text}} - {{o.votes}}</div>
-      <mat-progress-bar [value]="o.votes"></mat-progress-bar>
+      <div>{{o.text}} - {{o.votes}} ({{ (q.totalVotes ? o.votes / q.totalVotes * 100 : 0) | number:'1.0-0' }}%)</div>
+      <mat-progress-bar [value]="q.totalVotes ? o.votes / q.totalVotes * 100 : 0"></mat-progress-bar>
     </div>
   </div>
 </div>

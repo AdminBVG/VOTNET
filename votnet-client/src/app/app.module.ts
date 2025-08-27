@@ -15,7 +15,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { LayoutComponent } from './layout/layout.component';
 import { LoginComponent } from './login/login.component';
-import { authInterceptor } from './services/auth.interceptor';
+import { AuthInterceptor } from './services/auth.interceptor';
 
 @NgModule({
   declarations: [AppComponent, LayoutComponent, LoginComponent],
@@ -34,7 +34,7 @@ import { authInterceptor } from './services/auth.interceptor';
     MatInputModule
   ],
   providers: [
-    { provide: HTTP_INTERCEPTORS, useValue: authInterceptor, multi: true }
+    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
   ],
   bootstrap: [AppComponent]
 })

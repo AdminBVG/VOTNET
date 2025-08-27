@@ -12,6 +12,9 @@ import { environment } from '../../environments/environment';
 export class ElectionCreateComponent {
   form = this.fb.group({
     name: ['', Validators.required],
+    details: [''],
+    scheduledAt: ['', Validators.required],
+    quorumMinimo: [0, [Validators.required, Validators.min(0)]],
     questions: this.fb.array([
       this.fb.group({
         text: ['', Validators.required],
@@ -46,6 +49,7 @@ export class ElectionCreateComponent {
   }
 
   submit(): void {
+    if (this.form.invalid) return;
     const election = this.form.value;
     this.http.post<any>(`${environment.apiBaseUrl}/elections`, election).subscribe(e => {
       if (this.padron) {
