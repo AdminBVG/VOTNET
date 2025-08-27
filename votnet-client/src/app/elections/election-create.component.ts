@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { FormArray, FormBuilder, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
@@ -10,23 +10,25 @@ import { environment } from '../../environments/environment';
   styleUrls: ['./election-create.component.css']
 })
 export class ElectionCreateComponent {
-  form = this.fb.group({
-    name: ['', Validators.required],
-    details: [''],
-    scheduledAt: ['', Validators.required],
-    quorumMinimo: [0, [Validators.required, Validators.min(0)]],
-    questions: this.fb.array([
-      this.fb.group({
-        text: ['', Validators.required],
-        options: this.fb.array([
-          this.fb.control('', Validators.required)
-        ])
-      })
-    ])
-  });
+  form: FormGroup;
   padron?: File;
 
-  constructor(private fb: FormBuilder, private http: HttpClient, private router: Router) {}
+  constructor(private fb: FormBuilder, private http: HttpClient, private router: Router) {
+    this.form = this.fb.group({
+      name: ['', Validators.required],
+      details: [''],
+      scheduledAt: ['', Validators.required],
+      quorumMinimo: [0, [Validators.required, Validators.min(0)]],
+      questions: this.fb.array([
+        this.fb.group({
+          text: ['', Validators.required],
+          options: this.fb.array([
+            this.fb.control('', Validators.required)
+          ])
+        })
+      ])
+    });
+  }
 
   get questions(): FormArray {
     return this.form.get('questions') as FormArray;
