@@ -13,6 +13,16 @@ using BvgAuthApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Replace placeholders with environment variables when available
+builder.Configuration["ConnectionStrings:Default"] =
+    Environment.GetEnvironmentVariable("DB_CONN") ?? builder.Configuration["ConnectionStrings:Default"];
+builder.Configuration["Jwt:Key"] =
+    Environment.GetEnvironmentVariable("JWT_KEY") ?? builder.Configuration["Jwt:Key"];
+builder.Configuration["Seed:AdminEmail"] =
+    Environment.GetEnvironmentVariable("ADMIN_EMAIL") ?? builder.Configuration["Seed:AdminEmail"];
+builder.Configuration["Seed:AdminPassword"] =
+    Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? builder.Configuration["Seed:AdminPassword"];
+
 // DbContext
 builder.Services.AddDbContext<BvgDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
