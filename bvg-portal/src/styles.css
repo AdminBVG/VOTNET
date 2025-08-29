@@ -7,11 +7,44 @@ body{ margin:0; font-family: 'Poppins', Inter, Roboto, Arial, sans-serif; color:
   --bvg-dark:#001489;
   --bvg-blue:#005EB8;
   --bvg-celeste:#28CBFF;
+  --bg:#ffffff;
+  --text:#1c1c1c;
+  --surface:#f7f9fc;
 }
 
-.mat-toolbar{ background: var(--bvg-dark); color:#fff }
-.mat-raised-button.mat-primary{ background: var(--bvg-blue); color:#fff }
-.mat-raised-button.mat-accent{ background: var(--bvg-celeste); color:#003 }
+/* Header theme */
+.mat-toolbar{
+  background: linear-gradient(90deg, var(--bvg-dark) 0%, var(--bvg-blue) 100%);
+  color:#fff
+}
 
-.container{ padding:16px }
+/* Buttons (MDC new classes + legacy) */
+.mat-mdc-raised-button.mat-primary, .mat-raised-button.mat-primary{ background: var(--bvg-blue); color:#fff }
+.mat-mdc-raised-button.mat-accent, .mat-raised-button.mat-accent{ background: var(--bvg-celeste); color:#003 }
+.mat-mdc-stroked-button.mat-primary, .mat-stroked-button.mat-primary{ border-color: var(--bvg-blue); color: var(--bvg-blue) }
+
+/* Forms focus outline */
+.mdc-text-field--focused .mdc-notched-outline__leading,
+.mdc-text-field--focused .mdc-notched-outline__notch,
+.mdc-text-field--focused .mdc-notched-outline__trailing{ border-color: var(--bvg-blue) !important }
+
+/* Layout */
+.container{ padding:16px; max-width: 1200px; margin: 0 auto }
+
+/* Dark mode */
+[data-theme="dark"] body{ background:#0b1020; color:#e7eaf0 }
+[data-theme="dark"] .mat-toolbar{ background: linear-gradient(90deg, #0a1054 0%, #0b3f77 100%) }
+[data-theme="dark"] .mat-mdc-raised-button.mat-primary, [data-theme="dark"] .mat-raised-button.mat-primary{ background:#0d6efd }
+[data-theme="dark"] .mdc-text-field--focused .mdc-notched-outline__leading,
+[data-theme="dark"] .mdc-text-field--focused .mdc-notched-outline__notch,
+[data-theme="dark"] .mdc-text-field--focused .mdc-notched-outline__trailing{ border-color:#0d6efd !important }
+[data-theme="dark"] .app-footer{ background:#070b16 }
+
+/* Slide toggle color align to BVG blue */
+.mat-mdc-slide-toggle.mat-primary{
+  --mdc-switch-selected-track-color: var(--bvg-blue);
+  --mdc-switch-selected-handle-color: var(--bvg-blue);
+  --mdc-switch-selected-hover-handle-color: var(--bvg-celeste);
+  --mdc-switch-selected-pressed-handle-color: var(--bvg-blue);
+}
 

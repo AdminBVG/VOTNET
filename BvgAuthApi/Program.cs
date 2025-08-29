@@ -10,8 +10,36 @@ using BvgAuthApi.Hubs;
 using BvgAuthApi.Models;
 using BvgAuthApi.Seed;
 using BvgAuthApi.Services;
+using Microsoft.Extensions.FileProviders;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Overlay persisted admin config (data/appconfig.json) if present
+try
+{
+    var dataDir = Path.Combine(builder.Environment.ContentRootPath, "data");
+    var cfgFile = Path.Combine(dataDir, "appconfig.json");
+    if (File.Exists(cfgFile))
+    {
+        using var s = File.OpenRead(cfgFile);
+        var doc = JsonDocument.Parse(s);
+        if (doc.RootElement.TryGetProperty("StorageRoot", out var storage))
+            builder.Configuration["Storage:Root"] = storage.GetString();
+        if (doc.RootElement.TryGetProperty("Smtp", out var smtp))
+        {
+            if (smtp.TryGetProperty("Host", out var host)) builder.Configuration["Smtp:Host"] = host.GetString();
+            if (smtp.TryGetProperty("Port", out var port)) builder.Configuration["Smtp:Port"] = port.GetInt32().ToString();
+            if (smtp.TryGetProperty("User", out var user)) builder.Configuration["Smtp:User"] = user.GetString();
+            if (smtp.TryGetProperty("From", out var from)) builder.Configuration["Smtp:From"] = from.GetString();
+        }
+        Console.WriteLine("[BOOT] Loaded admin config from data/appconfig.json");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[BOOT] Failed to load admin config: {ex.Message}");
+}
 
 // Replace placeholders with environment variables when available
 builder.Configuration["ConnectionStrings:Default"] =
@@ -37,6 +65,7 @@ builder.Services
         o.Password.RequiredLength = 6;
         o.Password.RequireNonAlphanumeric = false;
         o.Password.RequireUppercase = false;
+        o.Password.RequireLowercase = false;
         o.Password.RequireDigit = true;
     })
     .AddRoles<IdentityRole>()
@@ -117,11 +146,21 @@ app.UseAuthorization();
 app.MapSwagger();
 app.UseSwaggerUI();
 
+// Static files for uploads (storage)
+var uploadsRoot = Path.Combine(app.Environment.ContentRootPath, builder.Configuration["Storage:Root"] ?? "uploads");
+Directory.CreateDirectory(uploadsRoot);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRoot),
+    RequestPath = "/uploads"
+});
+
 app.MapHub<LiveHub>("/hubs/live");
 
 app.MapAuth();
 app.MapUserAdmin();
 app.MapElections();
+app.MapConfig();
 if (app.Environment.IsDevelopment()) app.MapDebug();
 
 // Migraciones + Seed on startup

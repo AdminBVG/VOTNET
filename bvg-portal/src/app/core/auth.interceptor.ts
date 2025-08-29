@@ -14,11 +14,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }
   return next(req).pipe(
     catchError(err => {
-      if (err.status === 401 || err.status === 403) {
+      if (err.status === 401) {
         localStorage.removeItem('token');
-        // Opcional: preservar URL actual
         router.navigateByUrl('/login');
       }
+      // En 403 no cerramos sesión; dejar que la vista maneje autorización
       return throwError(() => err);
     })
   );

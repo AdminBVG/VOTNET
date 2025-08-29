@@ -11,7 +11,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 
-interface UserDto { id: string; userName: string; email: string; isActive: boolean; }
+interface UserDto { id: string; userName: string; email: string; isActive: boolean; role?: string; }
 
 @Component({
   selector: 'app-users',
@@ -20,9 +20,9 @@ interface UserDto { id: string; userName: string; email: string; isActive: boole
   template: `
   <div class="page">
     <h2>Usuarios</h2>
-    <mat-card>
+    <mat-card class="user-card">
       <h3>Crear usuario</h3>
-      <form [formGroup]="form" (ngSubmit)="create()">
+      <form [formGroup]="form" (ngSubmit)="create()" class="user-form">
         <mat-form-field appearance="outline">
           <mat-label>Usuario</mat-label>
           <input matInput formControlName="userName">
@@ -31,29 +31,27 @@ interface UserDto { id: string; userName: string; email: string; isActive: boole
           <mat-label>Email</mat-label>
           <input matInput formControlName="email">
         </mat-form-field>
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="pw">
           <mat-label>Contraseña</mat-label>
           <input matInput type="password" formControlName="password">
+          <mat-hint align="start">Mínimo 6 caracteres y al menos 1 dígito</mat-hint>
+          <mat-error *ngIf="form.controls.password.hasError('required')">La contraseña es obligatoria</mat-error>
+          <mat-error *ngIf="form.controls.password.hasError('minlength')">Debe tener al menos 6 caracteres</mat-error>
+          <mat-error *ngIf="form.controls.password.hasError('pattern')">Debe incluir al menos un número</mat-error>
         </mat-form-field>
         <mat-form-field appearance="outline">
-          <mat-label>Rol</mat-label>
+          <mat-label>Rol global (opcional)</mat-label>
           <mat-select formControlName="role">
-            <mat-optgroup label="Administración">
-              <mat-option value="GlobalAdmin">GlobalAdmin</mat-option>
-              <mat-option value="VoteAdmin">VoteAdmin</mat-option>
-            </mat-optgroup>
-            <mat-optgroup label="Operación de Votación">
-              <mat-option value="ElectionRegistrar">ElectionRegistrar</mat-option>
-              <mat-option value="ElectionObserver">ElectionObserver</mat-option>
-              <mat-option value="ElectionVoter">ElectionVoter</mat-option>
-              <mat-option value="VoteOperator">VoteOperator</mat-option>
-            </mat-optgroup>
+            <mat-option [value]="''">Funcional (sin rol global)</mat-option>
+            <mat-option value="GlobalAdmin">GlobalAdmin</mat-option>
+            <mat-option value="VoteAdmin">VoteAdmin</mat-option>
           </mat-select>
         </mat-form-field>
-        <button mat-raised-button color="primary" [disabled]="form.invalid">Crear</button>
+        <div class="actions"><button mat-raised-button color="primary" [disabled]="form.invalid">Crear</button></div>
       </form>
     </mat-card>
-    <table mat-table [dataSource]="items()" class="mat-elevation-z1" *ngIf="items().length">
+    <h3 class="list-title">Usuarios:</h3>
+    <table mat-table [dataSource]="items()" class="mat-elevation-z1 users-table" *ngIf="items().length">
       <ng-container matColumnDef="userName">
         <th mat-header-cell *matHeaderCellDef>Usuario</th>
         <td mat-cell *matCellDef="let u">{{u.userName}}</td>
@@ -64,7 +62,19 @@ interface UserDto { id: string; userName: string; email: string; isActive: boole
       </ng-container>
       <ng-container matColumnDef="isActive">
         <th mat-header-cell *matHeaderCellDef>Activo</th>
-        <td mat-cell *matCellDef="let u">{{u.isActive ? 'Sí' : 'No'}}</td>
+        <td mat-cell *matCellDef="let u"><mat-slide-toggle color="primary" [checked]="u.isActive" (change)="toggleActive(u)"></mat-slide-toggle></td>
+      </ng-container>
+      <ng-container matColumnDef="role">
+        <th mat-header-cell *matHeaderCellDef>Rol global</th>
+        <td mat-cell *matCellDef="let u" class="cell-role">
+          <mat-form-field appearance="outline" class="mini">
+            <mat-select [value]="u.role || ''" (selectionChange)="updateRole(u, $event.value)">
+              <mat-option [value]="''">Funcional</mat-option>
+              <mat-option value="GlobalAdmin">GlobalAdmin</mat-option>
+              <mat-option value="VoteAdmin">VoteAdmin</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </td>
       </ng-container>
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef></th>
@@ -76,15 +86,35 @@ interface UserDto { id: string; userName: string; email: string; isActive: boole
     <div *ngIf="!items().length">No hay datos o no tienes permisos.</div>
   </div>
   `,
-  styles: [`.page{ padding:16px } table{ width:100% }`]
+  styles: [`
+    .page{ padding:16px }
+    .user-card{ padding:16px }
+    table{ width:100% }
+    .users-table{ margin-top:12px }
+    .list-title{ margin:16px 0 8px; font-weight:600 }
+    .user-form{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); column-gap:16px; row-gap:12px; align-items:end }
+    .user-form .pw{ grid-column: span 1 }
+    .user-form .actions{ justify-self:end; align-self:end; margin-left:8px }
+    @media (min-width: 900px){ .user-form{ grid-template-columns: repeat(4, minmax(220px,1fr)) } .user-form .actions{ grid-column: 4 } }
+    td .mini{ width: 180px; margin:0 }
+    .cell-role{ display:flex; align-items:center }
+    :host ::ng-deep .mat-mdc-cell{ vertical-align: middle }
+    :host ::ng-deep .cell-role .mat-mdc-form-field-flex{ align-items:center }
+    :host ::ng-deep .cell-role .mat-mdc-form-field-infix{ padding-top:6px; padding-bottom:6px }
+  `]
 })
 export class UsersComponent {
   private http = inject(HttpClient);
   private fb = inject(FormBuilder);
   private snack = inject(MatSnackBar);
   items = signal<UserDto[]>([]);
-  cols = ['userName','email','isActive','actions'];
-  form = this.fb.group({ userName:['', Validators.required], email:['', [Validators.required]], password:['', Validators.required], role:['', Validators.required] });
+  cols = ['userName','email','isActive','role','actions'];
+  form = this.fb.group({
+    userName:['', Validators.required],
+    email:['', [Validators.required]],
+    password:['', [Validators.required, Validators.minLength(6), Validators.pattern(/\d/)]],
+    role:['']
+  });
 
   constructor(){
     this.http.get<UserDto[]>(`/api/users`).subscribe({
@@ -94,7 +124,32 @@ export class UsersComponent {
   }
   create(){
     if (this.form.invalid) return;
-    this.http.post('/api/users', this.form.value).subscribe({ next: _=> { this.snack.open('Usuario creado','OK',{duration:2000}); this.form.reset(); this.http.get<UserDto[]>(`/api/users`).subscribe(d=>this.items.set(d)); }, error: _=> this.snack.open('Error al crear usuario','OK',{duration:3000}) });
+    this.http.post('/api/users', this.form.value).subscribe({
+      next: _=> {
+        this.snack.open('Usuario creado','OK',{duration:2000});
+        this.form.reset();
+        this.http.get<UserDto[]>(`/api/users`).subscribe(d=>this.items.set(d));
+      },
+      error: (err:any)=> {
+        let msg = 'Error al crear usuario';
+        const e = err?.error;
+        if (e?.error === 'invalid_user_data' && Array.isArray(e.details)) {
+          msg = e.details.map((d:any)=> d.description || d.code).join('\n');
+        } else if (e?.error) {
+          msg = e.error;
+        }
+        this.snack.open(msg, 'OK', { duration: 5000 });
+      }
+    });
+  }
+  updateRole(u: UserDto, role: string){
+    this.http.put(`/api/users/${u.id}/role`, { role }).subscribe({
+      next: _=> { u.role = role; this.snack.open('Rol actualizado','OK',{duration:1500}); },
+      error: err=> {
+        const e = err?.error; const msg = e?.error ? e.error : 'Error al actualizar rol';
+        this.snack.open(msg,'OK',{duration:2000});
+      }
+    });
   }
   toggleActive(u: UserDto){
     this.http.put(`/api/users/${u.id}`, { isActive: !u.isActive }).subscribe({ next: (res:any)=> { u.isActive = res.isActive; this.snack.open('Estado actualizado','OK',{duration:1500}); } });

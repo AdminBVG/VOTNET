@@ -15,28 +15,47 @@ namespace BvgAuthApi.Endpoints
                 [FromBody] LoginDto dto,
                 UserManager<ApplicationUser> um,
                 JwtService jwt,
-                [FromServices] IHostEnvironment env) =>
+                ILoggerFactory logFactory) =>
             {
-                var userName = dto.UserName?.Trim() ?? string.Empty;
-                var user = await um.FindByNameAsync(userName);
-                if (user == null)
-                    user = await um.FindByEmailAsync(userName);
-                if (user == null)
-                    return env.IsDevelopment()
-                        ? Results.Json(new { error = "user_not_found" }, statusCode: 401)
-                        : Results.Unauthorized();
+                var logger = logFactory.CreateLogger("AuthEndpoints");
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
 
-                if (!await um.CheckPasswordAsync(user, dto.Password?.Trim() ?? string.Empty))
-                    return env.IsDevelopment()
-                        ? Results.Json(new { error = "invalid_password" }, statusCode: 401)
-                        : Results.Unauthorized();
+                var userName = dto.UserName?.Trim() ?? string.Empty;
+                var password = dto.Password?.Trim() ?? string.Empty;
+                logger.LogInformation("Auth login attempt userName={UserName}", userName);
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    logger.LogWarning("Auth login failed: missing_username");
+                    return Err("missing_username", 400);
+                }
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    logger.LogWarning("Auth login failed: missing_password user={UserName}", userName);
+                    return Err("missing_password", 400);
+                }
+
+                var user = await um.FindByNameAsync(userName) ?? await um.FindByEmailAsync(userName);
+                if (user is null)
+                {
+                    logger.LogWarning("Auth login failed: user_not_found user={UserName}", userName);
+                    return Err("user_not_found", 401);
+                }
+
+                var valid = await um.CheckPasswordAsync(user, password);
+                if (!valid)
+                {
+                    logger.LogWarning("Auth login failed: invalid_password userId={UserId} userName={UserName}", user.Id, user.UserName);
+                    return Err("invalid_password", 401);
+                }
 
                 if (!user.IsActive)
-                    return env.IsDevelopment()
-                        ? Results.Json(new { error = "user_inactive" }, statusCode: 403)
-                        : Results.Forbid();
+                {
+                    logger.LogWarning("Auth login failed: user_inactive userId={UserId}", user.Id);
+                    return Err("user_inactive", 403);
+                }
 
                 var token = await jwt.CreateTokenAsync(user);
+                logger.LogInformation("Auth login success userId={UserId} userName={UserName}", user.Id, user.UserName);
                 return Results.Ok(new { token });
             });
 

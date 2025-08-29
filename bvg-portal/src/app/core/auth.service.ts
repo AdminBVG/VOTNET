@@ -18,10 +18,10 @@ export class AuthService {
   }
   get roles(): string[] {
     const p = this.payload; if (!p) return [];
-    // roles can be a single string or array under 'role' claim
-    const r = (p['role'] ?? p['roles']) as any;
-    if (!r) return [];
-    return Array.isArray(r) ? r : [String(r)];
+    // roles can arrive as 'role', 'roles' or the full claim type URI
+    const raw = (p['role'] ?? p['roles'] ?? p['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']) as any;
+    if (!raw) return [];
+    return Array.isArray(raw) ? raw : [String(raw)];
   }
   hasRole(role: string): boolean { return this.roles.includes(role); }
 
