@@ -1,0 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+/* Global styles */
+html, body { height: 100%; }
+body{ margin:0; font-family: 'Poppins', Inter, Roboto, Arial, sans-serif; color:#1c1c1c }
+
+:root{
+  --bvg-dark:#001489;
+  --bvg-blue:#005EB8;
+  --bvg-celeste:#28CBFF;
+}
+
+.mat-toolbar{ background: var(--bvg-dark); color:#fff }
+.mat-raised-button.mat-primary{ background: var(--bvg-blue); color:#fff }
+.mat-raised-button.mat-accent{ background: var(--bvg-celeste); color:#003 }
+
+.container{ padding:16px }
+

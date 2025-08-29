@@ -26,9 +26,29 @@ namespace BvgAuthApi.Endpoints
             g.MapGet("/", async (UserManager<ApplicationUser> um) =>
                 Results.Ok(await um.Users.Select(u => new { u.Id, u.UserName, u.Email, u.IsActive }).ToListAsync()));
 
+            g.MapPut("/{id}", async (string id, [FromBody] UpdateUserDto dto, UserManager<ApplicationUser> um) =>
+            {
+                var u = await um.Users.FirstOrDefaultAsync(x => x.Id == id);
+                if (u is null) return Results.NotFound();
+                if (!string.IsNullOrWhiteSpace(dto.UserName)) u.UserName = dto.UserName;
+                if (!string.IsNullOrWhiteSpace(dto.Email)) { u.Email = dto.Email; u.EmailConfirmed = true; }
+                if (dto.IsActive.HasValue) u.IsActive = dto.IsActive.Value;
+                await um.UpdateAsync(u);
+                return Results.Ok(new { u.Id, u.UserName, u.Email, u.IsActive });
+            });
+
+            g.MapDelete("/{id}", async (string id, UserManager<ApplicationUser> um) =>
+            {
+                var u = await um.Users.FirstOrDefaultAsync(x => x.Id == id);
+                if (u is null) return Results.NotFound();
+                var res = await um.DeleteAsync(u);
+                return res.Succeeded ? Results.NoContent() : Results.BadRequest(res.Errors);
+            });
+
             return app;
         }
 
         public record CreateUserDto(string UserName, string Email, string Password, string Role);
+        public record UpdateUserDto(string? UserName, string? Email, bool? IsActive);
     }
 }

@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "tOYKaEWXYVPTKNuQ+QvBXYG5Fr49bt51T0yHjAb1Ujk=",
+  "Source": "BvgAuthApi",
+  "BasePath": "_content/BvgAuthApi",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

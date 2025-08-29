@@ -22,6 +22,8 @@ builder.Configuration["Seed:AdminEmail"] =
     Environment.GetEnvironmentVariable("ADMIN_EMAIL") ?? builder.Configuration["Seed:AdminEmail"];
 builder.Configuration["Seed:AdminPassword"] =
     Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? builder.Configuration["Seed:AdminPassword"];
+builder.Configuration["Seed:ResetPassword"] =
+    Environment.GetEnvironmentVariable("ADMIN_RESET") ?? builder.Configuration["Seed:ResetPassword"];
 
 // DbContext
 builder.Services.AddDbContext<BvgDbContext>(opt =>
@@ -120,6 +122,7 @@ app.MapHub<LiveHub>("/hubs/live");
 app.MapAuth();
 app.MapUserAdmin();
 app.MapElections();
+if (app.Environment.IsDevelopment()) app.MapDebug();
 
 // Migraciones + Seed on startup
 using (var scope = app.Services.CreateScope())

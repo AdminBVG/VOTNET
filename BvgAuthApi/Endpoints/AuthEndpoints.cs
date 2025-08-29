@@ -11,13 +11,30 @@ namespace BvgAuthApi.Endpoints
         {
             var g = app.MapGroup("/api/auth");
 
-            g.MapPost("/login", async ([FromBody] LoginDto dto, UserManager<ApplicationUser> um, JwtService jwt) =>
+            g.MapPost("/login", async (
+                [FromBody] LoginDto dto,
+                UserManager<ApplicationUser> um,
+                JwtService jwt,
+                [FromServices] IHostEnvironment env) =>
             {
-                var user = await um.FindByNameAsync(dto.UserName);
-                if (user == null) return Results.Unauthorized();
+                var userName = dto.UserName?.Trim() ?? string.Empty;
+                var user = await um.FindByNameAsync(userName);
+                if (user == null)
+                    user = await um.FindByEmailAsync(userName);
+                if (user == null)
+                    return env.IsDevelopment()
+                        ? Results.Json(new { error = "user_not_found" }, statusCode: 401)
+                        : Results.Unauthorized();
 
-                if (!await um.CheckPasswordAsync(user, dto.Password)) return Results.Unauthorized();
-                if (!user.IsActive) return Results.Forbid();
+                if (!await um.CheckPasswordAsync(user, dto.Password?.Trim() ?? string.Empty))
+                    return env.IsDevelopment()
+                        ? Results.Json(new { error = "invalid_password" }, statusCode: 401)
+                        : Results.Unauthorized();
+
+                if (!user.IsActive)
+                    return env.IsDevelopment()
+                        ? Results.Json(new { error = "user_inactive" }, statusCode: 403)
+                        : Results.Forbid();
 
                 var token = await jwt.CreateTokenAsync(user);
                 return Results.Ok(new { token });

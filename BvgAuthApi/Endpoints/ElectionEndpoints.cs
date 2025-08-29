@@ -16,6 +16,22 @@ namespace BvgAuthApi.Endpoints
         {
             var g = app.MapGroup("/api/elections");
 
+            // Excel template for Padron upload
+            g.MapGet("/padron-template", () =>
+            {
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                using var pkg = new ExcelPackage();
+                var ws = pkg.Workbook.Worksheets.Add("Padron");
+                ws.Cells[1,1].Value = "ID";
+                ws.Cells[1,2].Value = "ShareholderName";
+                ws.Cells[1,3].Value = "LegalRepresentative";
+                ws.Cells[1,4].Value = "Proxy";
+                ws.Cells[1,5].Value = "Shares";
+                ws.Cells[1,1,1,5].Style.Font.Bold = true;
+                var bytes = pkg.GetAsByteArray();
+                return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "padron_template.xlsx");
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
+
             g.MapPost("/", async ([FromBody] CreateElectionDto dto, BvgDbContext db) =>
             {
                 var e = new Election
@@ -44,6 +60,22 @@ namespace BvgAuthApi.Endpoints
                         Questions = e.Questions.Select(q => new { q.Id, q.Text, Options = q.Options.Select(o => new { o.Id, o.Text }) })
                     }).ToListAsync()))
                 .RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
+
+            // List Padron entries for an election
+            g.MapGet("/{id}/padron", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
+            {
+                var userId = user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin)
+                {
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionRegistrar);
+                    if (!hasAssign) return Results.Forbid();
+                }
+                var items = await db.Padron.Where(p => p.ElectionId == id)
+                    .Select(p => new { p.Id, p.ShareholderId, p.ShareholderName, p.LegalRepresentative, p.Proxy, p.Shares, p.Attendance })
+                    .ToListAsync();
+                return Results.Ok(items);
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.ElectionRegistrar));
 
             g.MapPost("/{id}/padron", async (Guid id, IFormFile file, BvgDbContext db) =>
             {
@@ -194,6 +226,23 @@ namespace BvgAuthApi.Endpoints
                 await hub.Clients.All.SendAsync("voteRegistered", new { ElectionId = id, QuestionId = dto.QuestionId, OptionId = dto.OptionId });
                 return Results.Ok();
             }).RequireAuthorization(AppRoles.ElectionRegistrar);
+
+            // Attendance marking
+            g.MapPost("/{id}/padron/{padronId}/attendance", async (Guid id, Guid padronId, [FromBody] AttendanceDto dto, BvgDbContext db, ClaimsPrincipal user) =>
+            {
+                var userId = user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin)
+                {
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionRegistrar);
+                    if (!hasAssign) return Results.Forbid();
+                }
+                var entry = await db.Padron.FirstOrDefaultAsync(p => p.Id == padronId && p.ElectionId == id);
+                if (entry is null) return Results.NotFound();
+                entry.Attendance = dto.Attendance;
+                await db.SaveChangesAsync();
+                return Results.Ok();
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.ElectionRegistrar));
 
             g.MapGet("/{id}/results", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
             {
