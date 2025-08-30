@@ -11,6 +11,7 @@ using BvgAuthApi.Models;
 using BvgAuthApi.Seed;
 using BvgAuthApi.Services;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.Antiforgery;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -135,6 +136,15 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Antiforgery (XSRF) for SPA
+builder.Services.AddAntiforgery(o =>
+{
+    // Header usado por Angular para enviar el token de solicitud
+    o.HeaderName = "X-XSRF-TOKEN";
+    // Usar cookie antiforgery propia del framework (HttpOnly por defecto) para el cookie-token
+    // NO renombrarla a XSRF-TOKEN para evitar confusión con la cookie visible del SPA.
+});
+
 var app = builder.Build();
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -142,6 +152,8 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 app.UseCors("spa");
 app.UseAuthentication();
 app.UseAuthorization();
+// Anti-forgery middleware to satisfy endpoints that require it
+app.UseAntiforgery();
 
 app.MapSwagger();
 app.UseSwaggerUI();
@@ -162,6 +174,29 @@ app.MapUserAdmin();
 app.MapElections();
 app.MapConfig();
 if (app.Environment.IsDevelopment()) app.MapDebug();
+
+// Endpoint para emitir cookie/token XSRF para el SPA
+app.MapGet("/api/antiforgery/token", (IAntiforgery af, HttpContext ctx) =>
+{
+    // Genera y almacena el cookie-token (cookie HttpOnly del framework)
+    var tokens = af.GetAndStoreTokens(ctx);
+    // Expone el request-token en una cookie accesible por JS para que Angular lo envíe en el header
+    if (!string.IsNullOrEmpty(tokens.RequestToken))
+    {
+        ctx.Response.Cookies.Append(
+            "XSRF-TOKEN",
+            tokens.RequestToken!,
+            new CookieOptions
+            {
+                HttpOnly = false,
+                SameSite = SameSiteMode.Lax,
+                Secure = ctx.Request.IsHttps,
+                Path = "/"
+            }
+        );
+    }
+    return Results.Ok(new { token = tokens.RequestToken });
+}).AllowAnonymous();
 
 // Migraciones + Seed on startup
 using (var scope = app.Services.CreateScope())

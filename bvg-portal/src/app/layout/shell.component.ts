@@ -81,7 +81,13 @@ export class ShellComponent {
   year = new Date().getFullYear();
   get isGlobalAdmin(){ return this.auth.hasRole('GlobalAdmin'); }
   get isAdmin(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
-  ngOnInit(){ this.themeSvc.init(); }
+  ngOnInit(){
+    this.themeSvc.init();
+    if (this.auth.isAuthenticated){
+      // Asegurar cookie/token XSRF para las peticiones mutantes
+      this.auth.ensureXsrfToken().subscribe({ next: _=>{}, error: _=>{} });
+    }
+  }
   theme(){ return this.themeSvc.current() === 'dark' ? 'Oscuro' : 'Claro'; }
   toggleTheme(){ this.themeSvc.toggle(); }
 }

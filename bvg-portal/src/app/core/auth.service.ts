@@ -31,4 +31,9 @@ export class AuthService {
 
   setToken(token: string) { localStorage.setItem('token', token); }
   logout() { localStorage.removeItem('token'); this.router.navigateByUrl('/login'); }
+
+  // Solicita al backend que emita cookie/token XSRF para el SPA
+  ensureXsrfToken(){
+    return this.http.get<{ token: string }>(`/api/antiforgery/token`);
+  }
 }

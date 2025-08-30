@@ -275,7 +275,11 @@ export class ElectionWizardComponent {
       const created:any = await this.http.post('/api/elections', dto).toPromise();
       const id = created.id || created.Id || created?.e?.Id;
       if (!id) throw new Error('No se obtuvo ID');
-      if (this.padronFile){ const fd = new FormData(); fd.append('file', this.padronFile); await this.http.post(`/api/elections/${id}/padron`, fd).toPromise(); }
+      if (this.padronFile){
+        const fd = new FormData(); fd.append('file', this.padronFile);
+        try { await this.http.post(`/api/elections/${id}/padron`, fd).toPromise(); }
+        catch { this.snack.open('Error al subir padrón','OK',{duration:2500}); }
+      }
       for (const a of this.assignments()){
         await this.http.post(`/api/elections/${id}/assignments`, { userId: a.user.id, role: a.role }).toPromise();
       }

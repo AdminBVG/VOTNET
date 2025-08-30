@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { MatTableModule } from '@angular/material/table';
 import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { LiveService } from '../../core/live.service';
+import { AuthService } from '../../core/auth.service';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 
@@ -38,7 +39,7 @@ interface ElectionDto {
         <th mat-header-cell *matHeaderCellDef>Acciones</th>
         <td mat-cell *matCellDef="let e" class="actions">
           <button mat-button color="primary" (click)="open(e)">Ver</button>
-          <button mat-stroked-button (click)="edit(e)">Editar</button>
+          <button mat-stroked-button (click)="edit(e)" *ngIf="isAdmin">Editar</button>
         </td>
       </ng-container>
       <tr mat-header-row *matHeaderRowDef="cols"></tr>
@@ -53,6 +54,7 @@ export class ElectionsComponent {
   private http = inject(HttpClient);
   private live = inject(LiveService);
   private router = inject(Router);
+  private auth = inject(AuthService);
   items = signal<ElectionDto[]>([]);
   cols = ['name','date','quorum','actions'];
 
@@ -62,5 +64,6 @@ export class ElectionsComponent {
   }
   load(){ this.http.get<ElectionDto[]>(`/api/elections`).subscribe({ next: d=> this.items.set(d), error: ()=> this.items.set([]) }); }
   open(row: ElectionDto){ this.router.navigate(['/elections', row.id]); }
-  edit(row: ElectionDto){ this.router.navigate(['/elections', row.id], { queryParams: { mode: 'edit' } }); }
+  get isAdmin(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
+  edit(row: ElectionDto){ if (!this.isAdmin) return; this.router.navigate(['/elections', row.id], { queryParams: { mode: 'edit' } }); }
 }

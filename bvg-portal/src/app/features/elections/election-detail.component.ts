@@ -1,7 +1,7 @@
-import { Component, inject, signal, AfterViewInit } from '@angular/core';
+import { Component, inject, signal, AfterViewInit, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { NgFor, NgIf, DecimalPipe } from '@angular/common';
+import { NgFor, NgIf, DecimalPipe, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -25,21 +25,18 @@ import { AuthService } from '../../core/auth.service';
 @Component({
   selector: 'app-election-detail',
   standalone: true,
-  imports: [NgFor, NgIf, DecimalPipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule],
+  imports: [NgFor, NgIf, DecimalPipe, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule],
   template: `
   <div class="page">
     <h2>Elección {{id()}}</h2>
-    <mat-card *ngIf="editMode()" class="mat-elevation-z1">
+    <mat-card *ngIf="editMode() && canClose && (!quorum() || (quorum()?.present||0) === 0)" class="mat-elevation-z1">
       <h3>Editar configuración</h3>
       <form [formGroup]="editForm" (ngSubmit)="saveEdit()" class="edit-grid">
         <mat-form-field appearance="outline">
           <mat-label>Nombre</mat-label>
           <input matInput formControlName="name">
         </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Detalles</mat-label>
-          <input matInput formControlName="details">
-        </mat-form-field>
+         
         <mat-form-field appearance="outline">
           <mat-label>Fecha</mat-label>
           <input matInput [matDatepicker]="picker" [value]="editDate()" (dateChange)="onEditDate($event.value)">
@@ -62,11 +59,20 @@ import { AuthService } from '../../core/auth.service';
     </mat-card>
     <div class="grid">
       <mat-card *ngIf="!editMode()">
+        <h3>Detalle</h3>
+        <div *ngIf="electionInfo() as info">
+          <div><b>Nombre:</b> {{ info.name ?? info.Name }}</div>
+          <div><b>Detalles:</b> {{ info.details ?? info.Details }}</div>
+          <div><b>Fecha:</b> {{ (info.scheduledAt ?? info.ScheduledAt) | date:'medium' }}</div>
+          <div><b>Quórum mínimo:</b> {{ ((info.quorumMinimo ?? info.QuorumMinimo) * 100) | number:'1.0-0' }}%</div>
+        </div>
+      </mat-card>
+      <mat-card *ngIf="!editMode()">
         <h3>Quórum</h3>
         <div *ngIf="quorum() as q">Total: {{q.total}} | Presentes: {{q.present}} | %: {{(q.quorum*100) | number:'1.0-2'}}%</div>
       </mat-card>
 
-      <mat-card *ngIf="!editMode()">
+      <mat-card *ngIf="!editMode() && canClose">
         <h3>Subir padrón (Excel)</h3>
         <div class="upload">
           <a mat-stroked-button color="primary" href="/api/elections/padron-template" download>Descargar plantilla Excel</a>
@@ -110,7 +116,7 @@ import { AuthService } from '../../core/auth.service';
         <mat-paginator [pageSize]="10" [pageSizeOptions]="[5,10,25,50]"></mat-paginator>
       </mat-card>
 
-      <mat-card *ngIf="!editMode()">
+      <mat-card *ngIf="!editMode() && canClose">
         <h3>Asignaciones</h3>
         <form [formGroup]="assignForm" (ngSubmit)="addAssign()" class="assign-form">
           <mat-form-field appearance="outline">
@@ -125,8 +131,8 @@ import { AuthService } from '../../core/auth.service';
         </form>
         <table mat-table [dataSource]="assignments()" class="mat-elevation-z1" *ngIf="assignments().length">
           <ng-container matColumnDef="userId">
-            <th mat-header-cell *matHeaderCellDef>Usuario</th>
-            <td mat-cell *matCellDef="let a">{{a.userId}}</td>
+             <th mat-header-cell *matHeaderCellDef>Usuario</th>
+             <td mat-cell *matCellDef="let a">{{a.userName || a.UserName || a.userId}}</td>
           </ng-container>
           <ng-container matColumnDef="role">
             <th mat-header-cell *matHeaderCellDef>Rol</th>
@@ -227,6 +233,7 @@ export class ElectionDetailComponent implements AfterViewInit {
   resCols = ['text','votes'];
   results = signal<any[]>([]);
   quorum = signal<{total:number,present:number,quorum:number}|null>(null);
+  electionInfo = signal<any|null>(null);
 
   votePadronId: string | null = null;
   voteQuestionId: string | null = null;
@@ -240,10 +247,13 @@ export class ElectionDetailComponent implements AfterViewInit {
   constructor(){
     this.id.set(this.route.snapshot.params['id']);
     this.editMode.set(this.route.snapshot.queryParamMap.get('mode')==='edit');
+    // Forzar off si no es admin
+    if (this.editMode() && !(this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'))) this.editMode.set(false);
     this.loadAssignments();
     this.loadResults();
     this.loadPadron();
     this.loadQuorum();
+    this.loadElectionInfo();
     this.live.onVoteRegistered(()=> { this.loadResults(); this.loadQuorum(); });
     if (this.editMode()) this.prefillEdit();
   }
@@ -285,9 +295,28 @@ export class ElectionDetailComponent implements AfterViewInit {
   loadResults(){
     this.http.get<any[]>(`/api/elections/${this.id()}/results`).subscribe({ next: d=> this.results.set(d as any[]), error: _=> this.results.set([]) });
   }
+  loadElectionInfo(){
+    this.http.get<any[]>(`/api/elections`).subscribe({
+      next: (list:any[]) => { const e = (list||[]).find((x:any)=> (x.id ?? x.Id) === this.id()); this.electionInfo.set(e || null); },
+      error: _ => this.electionInfo.set(null)
+    });
+  }
 
   loadPadron(){ this.http.get<any[]>(`/api/elections/${this.id()}/padron`).subscribe({ next: d=> { this.padronDS.data = d; this.ngAfterViewInit(); }, error: _=> { this.padronDS.data = []; } }); }
-  loadQuorum(){ this.http.get<any>(`/api/elections/${this.id()}/quorum`).subscribe({ next: d=> this.quorum.set({ total: d.total ?? d.Total, present: d.present ?? d.Present, quorum: d.quorum ?? d.Quorum }), error: _=> this.quorum.set(null) }); }
+  loadQuorum(){
+    this.http.get<any>(`/api/elections/${this.id()}/quorum`).subscribe({
+      next: d=> {
+        const q = { total: d.total ?? d.Total, present: d.present ?? d.Present, quorum: d.quorum ?? d.Quorum } as {total:number,present:number,quorum:number};
+        this.quorum.set(q);
+        if (this.editMode() && (q.present ?? 0) > 0){
+          this.editMode.set(false);
+          this.snack.open('No se puede editar: ya hay registros de asistencia','OK',{duration:2500});
+          this.router.navigate(['/elections', this.id()]);
+        }
+      },
+      error: _=> this.quorum.set(null)
+    });
+  }
   setAtt(padronId: string, att: 'None'|'Virtual'|'Presencial'){
     this.http.post(`/api/elections/${this.id()}/padron/${padronId}/attendance`, { attendance: att }).subscribe({
       next: _=> { this.snack.open('Asistencia actualizada','OK',{duration:1500}); this.loadPadron(); this.loadQuorum(); },
@@ -316,7 +345,7 @@ export class ElectionDetailComponent implements AfterViewInit {
     const d = this.editSelDate(); if (!d) return;
     const [h,m] = (this.editSelTime()||'09:00').split(':').map((x:string)=>parseInt(x,10));
     const out = new Date(d); out.setHours(h||0, m||0, 0, 0);
-    const dto:any = { name: v.name, details: v.details, scheduledAt: out.toISOString(), quorumMinimo: Math.min(1, Math.max(0, (v.quorumPct||0)/100)) };
+    const dto:any = { name: v.name, scheduledAt: out.toISOString(), quorumMinimo: Math.min(1, Math.max(0, (v.quorumPct||0)/100)) };
     this.http.put(`/api/elections/${this.id()}`, dto).subscribe({ next: _=> { this.snack.open('Elección actualizada','OK',{duration:1500}); this.router.navigate(['/elections', this.id()]); this.editMode.set(false); this.loadQuorum(); }, error: _=> this.snack.open('Error al actualizar','OK',{duration:2000}) });
   }
   cancelEdit(){ this.router.navigate(['/elections', this.id()]); this.editMode.set(false); }
@@ -348,32 +377,13 @@ export class ElectionDetailComponent implements AfterViewInit {
     this.padronDS.filter = v.trim().toLowerCase();
   }
 
-  get canAttend(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole('ElectionRegistrar'); }
-  get canRegister(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole('ElectionRegistrar'); }
+  get canAttend(){
+    if (this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin')) return true;
+    const me = this.auth.payload?.sub;
+    return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === 'ElectionRegistrar');
+  }
+  get canRegister(){
+    return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole('VoteOperator');
+  }
   get canClose(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
 }
-  prefillEdit(){
-    this.http.get<any[]>(`/api/elections`).subscribe({ next: list => {
-      const e = (list||[]).find((x:any)=> (x.id ?? x.Id) === this.id());
-      if (!e) return;
-      this.editForm.patchValue({ name: e.name ?? e.Name, details: e.details ?? e.Details, quorumPct: Math.round(((e.quorumMinimo ?? e.QuorumMinimo) || 0)*100) });
-      const dt = new Date(e.scheduledAt ?? e.ScheduledAt);
-      this.editSelDate.set(dt);
-      const hh = String(dt.getHours()).padStart(2,'0'); const mm = String(dt.getMinutes()).padStart(2,'0');
-      this.editSelTime.set(`${hh}:${mm}`);
-    }});
-  }
-  editDate(){ return this.editSelDate(); }
-  editTime(){ return this.editSelTime(); }
-  onEditDate(d: Date | null){ this.editSelDate.set(d); }
-  onEditTime(t: string){ this.editSelTime.set(t || '09:00'); }
-  saveEdit(){
-    const v = this.editForm.value as any;
-    const d = this.editSelDate();
-    if (!d) return;
-    const [h,m] = (this.editSelTime()||'09:00').split(':').map(x=>parseInt(x,10));
-    const out = new Date(d); out.setHours(h||0, m||0, 0, 0);
-    const dto:any = { name: v.name, details: v.details, scheduledAt: out.toISOString(), quorumMinimo: Math.min(1, Math.max(0, (v.quorumPct||0)/100)) };
-    this.http.put(`/api/elections/${this.id()}`, dto).subscribe({ next: _=> { this.snack.open('Elección actualizada','OK',{duration:1500}); this.router.navigate(['/elections', this.id()]); this.editMode.set(false); this.loadQuorum(); }, error: _=> this.snack.open('Error al actualizar','OK',{duration:2000}) });
-  }
-  cancelEdit(){ this.router.navigate(['/elections', this.id()]); this.editMode.set(false); }
