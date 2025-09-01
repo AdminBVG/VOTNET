@@ -6,6 +6,7 @@ import { NgIf, NgFor, NgStyle } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -17,7 +18,7 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; s
 @Component({
   selector: 'app-attendance-register',
   standalone: true,
-  imports: [NgIf, NgFor, NgStyle, FormsModule, MatTableModule, MatButtonModule, MatSelectModule, MatCheckboxModule, MatSnackBarModule, MatTooltipModule],
+  imports: [NgIf, NgFor, NgStyle, FormsModule, MatTableModule, MatButtonModule, MatButtonToggleModule, MatSelectModule, MatCheckboxModule, MatSnackBarModule, MatTooltipModule],
   template: `
   <div class="page">
     <h2>Registro de asistencia</h2>
@@ -28,13 +29,15 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; s
           <div class="center">
             <div class="num">{{presentCount()+virtualCount()}}</div>
             <div class="sub">Presentes</div>
+            <div class="num shares">{{presentShares()+virtualShares()}}</div>
+            <div class="sub">Acciones</div>
           </div>
         </div>
       </div>
       <div class="legend">
-        <span class="item"><span class="box presencial"></span> Presencial: {{presentCount()}}</span>
-        <span class="item"><span class="box virtual"></span> Virtual: {{virtualCount()}}</span>
-        <span class="item"><span class="box ausente"></span> Ausente: {{absentCount()}}</span>
+        <span class="item"><span class="box presencial"></span> Presencial: {{presentCount()}} personas / {{presentShares()}} acciones</span>
+        <span class="item"><span class="box virtual"></span> Virtual: {{virtualCount()}} personas / {{virtualShares()}} acciones</span>
+        <span class="item"><span class="box ausente"></span> Ausente: {{absentCount()}} personas / {{absentShares()}} acciones</span>
       </div>
     </div>
     <div class="toolbar">
@@ -55,9 +58,11 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; s
       <ng-container matColumnDef="id"><th mat-header-cell *matHeaderCellDef>ID</th><td mat-cell *matCellDef="let r">{{r.shareholderId}}</td></ng-container>
       <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Accionista</th><td mat-cell *matCellDef="let r">{{r.shareholderName}}</td></ng-container>
       <ng-container matColumnDef="att"><th mat-header-cell *matHeaderCellDef>Asistencia</th><td mat-cell *matCellDef="let r">
-        <button mat-button [disabled]="locked || r.attendance==='Presencial'" [matTooltip]="disableReasonFor(r,'Presencial')" (click)="set(r,'Presencial')">Presencial</button>
-        <button mat-button [disabled]="locked || r.attendance==='Virtual'" [matTooltip]="disableReasonFor(r,'Virtual')" (click)="set(r,'Virtual')">Virtual</button>
-        <button mat-button [disabled]="locked || r.attendance==='None'" [matTooltip]="disableReasonFor(r,'None')" (click)="set(r,'None')">Ausente</button>
+        <mat-button-toggle-group [value]="r.attendance" (change)="set(r,$event.value)" [disabled]="locked">
+          <mat-button-toggle value="Presencial">Presencial</mat-button-toggle>
+          <mat-button-toggle value="Virtual">Virtual</mat-button-toggle>
+          <mat-button-toggle value="None">Ausente</mat-button-toggle>
+        </mat-button-toggle-group>
       </td></ng-container>
       <tr mat-header-row *matHeaderRowDef="cols"></tr>
       <tr mat-row *matRowDef="let row; columns: cols;"></tr>
@@ -72,6 +77,7 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; s
     .donut .hole{ position:absolute; inset:18px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center }
     .donut .center{ text-align:center; line-height:1 }
     .donut .num{ font-size:20px; font-weight:600 }
+    .donut .num.shares{ font-size:14px; margin-top:4px }
     .donut .sub{ font-size:11px; opacity:.75 }
     .legend{ display:flex; gap:12px; flex-wrap:wrap; font-size:13px; opacity:.95 }
     .legend .box{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px }
@@ -131,6 +137,9 @@ export class AttendanceRegisterComponent{
   presentCount(){ return this.rows().filter(r=>r.attendance==='Presencial').length; }
   virtualCount(){ return this.rows().filter(r=>r.attendance==='Virtual').length; }
   absentCount(){ return this.rows().filter(r=>r.attendance==='None').length; }
+  presentShares(){ return this.rows().filter(r=>r.attendance==='Presencial').reduce((s,r)=>s+r.shares,0); }
+  virtualShares(){ return this.rows().filter(r=>r.attendance==='Virtual').reduce((s,r)=>s+r.shares,0); }
+  absentShares(){ return this.rows().filter(r=>r.attendance==='None').reduce((s,r)=>s+r.shares,0); }
   chartStyle(){
     const total = this.rows().length || 1;
     const p = Math.round(this.presentCount()/total*100);
@@ -185,15 +194,5 @@ export class AttendanceRegisterComponent{
         if (err && err.status === 403) return 'Acceso denegado.';
         return 'Ocurrió un error al actualizar la asistencia.';
     }
-  }
-
-  disableReasonFor(row: PadronRow, attendanceType: 'Presencial'|'Virtual'|'None'): string {
-    if (this.locked) {
-      return 'Asistencia cerrada';
-    }
-    if (row.attendance === attendanceType) {
-      return 'Ya marcado como ' + attendanceType;
-    }
-    return '';
   }
 }
