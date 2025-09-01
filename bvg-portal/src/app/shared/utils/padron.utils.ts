@@ -2,19 +2,10 @@ export interface PadronRow {
   id: string; 
   shareholderId: string; 
   shareholderName: string; 
-  shares: number; 
+  shares: number;
   attendance: string;
   legalRepresentative?: string;
   proxy?: string;
-  // Campos de edición inline
-  editing?: boolean;
-  editingShares?: boolean;
-  editingRep?: boolean;
-  editingProxy?: boolean;
-  editName?: string;
-  editShares?: number;
-  editRepresentative?: string;
-  editProxy?: string;
 }
 
 /**
