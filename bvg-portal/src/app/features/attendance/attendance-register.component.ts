@@ -208,11 +208,7 @@ export class AttendanceRegisterComponent{
     });
   }
   markSelected(){
-    if (this.locked) { this.snack.open('Asistencia cerrada','OK',{duration:1500}); return; }
-    const ids = Object.keys(this.selected).filter(k=>this.selected[k]); if(!ids.length) return;
-    if(!confirm(`Aplicar "${this.bulkStatus}" a ${ids.length} seleccionados?`)) return;
-    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: (this.bulkStatus === 'Presencial' ? 2 : (this.bulkStatus === 'Virtual' ? 1 : 0)), ids }).subscribe({
-      next: _=> { this.snack.open('Seleccionados actualizados','OK',{duration:1200}); this.load(); },
+@@ -164,36 +216,26 @@ export class AttendanceRegisterComponent{
       error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
     });
   }
