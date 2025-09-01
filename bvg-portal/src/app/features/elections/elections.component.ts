@@ -40,6 +40,7 @@ interface ElectionDto {
         <td mat-cell *matCellDef="let e" class="actions">
           <button mat-button color="primary" (click)="open(e)">Ver</button>
           <button mat-stroked-button (click)="edit(e)" *ngIf="isAdmin">Editar</button>
+          <button mat-stroked-button color="accent" (click)="editPadron(e)" *ngIf="isAdmin">Editar Padrón</button>
         </td>
       </ng-container>
       <tr mat-header-row *matHeaderRowDef="cols"></tr>
@@ -66,4 +67,5 @@ export class ElectionsComponent {
   open(row: ElectionDto){ this.router.navigate(['/elections', row.id]); }
   get isAdmin(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
   edit(row: ElectionDto){ if (!this.isAdmin) return; this.router.navigate(['/elections', row.id], { queryParams: { mode: 'edit' } }); }
+  editPadron(row: ElectionDto){ if (!this.isAdmin) return; this.router.navigate(['/elections', row.id, 'padron-edit']); }
 }

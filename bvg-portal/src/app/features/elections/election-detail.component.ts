@@ -72,7 +72,8 @@ import { AuthService } from '../../core/auth.service';
         <div *ngIf="quorum() as q">Total: {{q.total}} | Presentes: {{q.present}} | %: {{(q.quorum*100) | number:'1.0-2'}}%</div>
       </mat-card>
 
-      <mat-card *ngIf="!editMode() && canClose">
+      <!-- Solo mostrar en modo edición -->
+      <mat-card *ngIf="editMode() && canClose">
         <h3>Subir padrón (Excel)</h3>
         <div class="upload">
           <a mat-stroked-button color="primary" href="/api/elections/padron-template" download>Descargar plantilla Excel</a>
@@ -102,7 +103,8 @@ import { AuthService } from '../../core/auth.service';
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Acciones</th>
             <td mat-cell *matCellDef="let p">{{p.shares}}</td>
           </ng-container>
-          <ng-container matColumnDef="attendance" *ngIf="canAttend">
+          <!-- Solo mostrar botones de asistencia en modo edición -->
+          <ng-container matColumnDef="attendance" *ngIf="canAttend && editMode()">
             <th mat-header-cell *matHeaderCellDef>Asistencia</th>
             <td mat-cell *matCellDef="let p">
               <button mat-button [disabled]="p.attendance==='Presencial'" (click)="setAtt(p.id,'Presencial')">Presencial</button>
@@ -116,7 +118,8 @@ import { AuthService } from '../../core/auth.service';
         <mat-paginator [pageSize]="10" [pageSizeOptions]="[5,10,25,50]"></mat-paginator>
       </mat-card>
 
-      <mat-card *ngIf="!editMode() && canClose">
+      <!-- Solo mostrar asignaciones en modo edición -->
+      <mat-card *ngIf="editMode() && canClose">
         <h3>Asignaciones</h3>
         <form [formGroup]="assignForm" (ngSubmit)="addAssign()" class="assign-form">
           <mat-form-field appearance="outline">
@@ -167,7 +170,8 @@ import { AuthService } from '../../core/auth.service';
         </div>
       </mat-card>
 
-      <mat-card *ngIf="canRegister && !editMode()">
+      <!-- Solo mostrar registro de votos en modo edición -->
+      <mat-card *ngIf="canRegister && editMode()">
         <h3>Registrar voto</h3>
         <div class="vote-form">
           <mat-form-field appearance="outline">
@@ -227,7 +231,9 @@ export class ElectionDetailComponent implements AfterViewInit {
   padronUploading = signal(false);
   lastPadronFile: string | null = null;
   padronDS = new MatTableDataSource<any>([]);
-  padronCols = ['id','name','shares','attendance'];
+  get padronCols() {
+    return this.editMode() && this.canAttend ? ['id','name','shares','attendance'] : ['id','name','shares'];
+  }
   assignments = signal<any[]>([]);
   assignCols = ['userId','role','action'];
   resCols = ['text','votes'];

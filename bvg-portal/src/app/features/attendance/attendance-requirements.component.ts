@@ -85,7 +85,20 @@ export class AttendanceRequirementsComponent{
       }
     });
   }
-  load(){ this.http.get<PadronRow[]>(`/api/elections/${this.id}/padron`).subscribe({ next: d=> this.rows.set(d||[]), error: _=> this.rows.set([]) }); }
+  load(){ 
+    this.http.get<PadronRow[]>(`/api/elections/${this.id}/padron`).subscribe({ 
+      next: d=> {
+        // Ordenar por ID de accionista numéricamente
+        const sortedData = (d || []).sort((a, b) => {
+          const aNum = parseInt(a.shareholderId) || 0;
+          const bNum = parseInt(b.shareholderId) || 0;
+          return aNum - bNum;
+        });
+        this.rows.set(sortedData);
+      }, 
+      error: _=> this.rows.set([]) 
+    }); 
+  }
   presentCount(){ return this.rows().filter(r=>r.attendance==='Presencial').length; }
   virtualCount(){ return this.rows().filter(r=>r.attendance==='Virtual').length; }
   absentCount(){ return this.rows().filter(r=>r.attendance==='None').length; }

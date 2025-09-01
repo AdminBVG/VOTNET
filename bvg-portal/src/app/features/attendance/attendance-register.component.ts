@@ -113,7 +113,21 @@ export class AttendanceRegisterComponent{
     this.live.onAttendanceSummary(_ => {/* donut recalculates from rows; no-op */});
     this.live.onAttendanceLockChanged(p => { if (p && p.ElectionId === this.id) this.locked = p.Locked; });
   }
-  load(){ this.http.get<PadronRow[]>(`/api/elections/${this.id}/padron`).subscribe({ next: d=> { this.rows.set(d||[]); this.selected = {}; }, error: _=> this.rows.set([]) }); }
+  load(){ 
+    this.http.get<PadronRow[]>(`/api/elections/${this.id}/padron`).subscribe({ 
+      next: d=> { 
+        // Ordenar por ID de accionista numÃ©ricamente
+        const sortedData = (d || []).sort((a, b) => {
+          const aNum = parseInt(a.shareholderId) || 0;
+          const bNum = parseInt(b.shareholderId) || 0;
+          return aNum - bNum;
+        });
+        this.rows.set(sortedData); 
+        this.selected = {}; 
+      }, 
+      error: _=> this.rows.set([]) 
+    }); 
+  }
   presentCount(){ return this.rows().filter(r=>r.attendance==='Presencial').length; }
   virtualCount(){ return this.rows().filter(r=>r.attendance==='Virtual').length; }
   absentCount(){ return this.rows().filter(r=>r.attendance==='None').length; }
@@ -162,14 +176,24 @@ export class AttendanceRegisterComponent{
   private mapAttendanceError(err: any): string {
     const code = (err && err.error && err.error.error) ? String(err.error.error) : '';
     switch (code) {
-      case 'attendance_closed': return 'La asistencia está cerrada para esta elección.';
-      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elección.';
-      case 'padron_entry_not_found': return 'No se encontró el registro del padrón.';
+      case 'attendance_closed': return 'La asistencia estÃ¡ cerrada para esta elecciÃ³n.';
+      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elecciÃ³n.';
+      case 'padron_entry_not_found': return 'No se encontrÃ³ el registro del padrÃ³n.';
       default:
-        if (err && err.status === 0) return 'No hay conexión con el servidor.';
-        if (err && err.status === 400) return 'Solicitud inválida.';
+        if (err && err.status === 0) return 'No hay conexiÃ³n con el servidor.';
+        if (err && err.status === 400) return 'Solicitud invÃ¡lida.';
         if (err && err.status === 403) return 'Acceso denegado.';
-        return 'Ocurrió un error al actualizar la asistencia.';
+        return 'OcurriÃ³ un error al actualizar la asistencia.';
     }
+  }
+
+  disableReasonFor(row: PadronRow, attendanceType: 'Presencial'|'Virtual'|'None'): string {
+    if (this.locked) {
+      return 'Asistencia cerrada';
+    }
+    if (row.attendance === attendanceType) {
+      return 'Ya marcado como ' + attendanceType;
+    }
+    return '';
   }
 }

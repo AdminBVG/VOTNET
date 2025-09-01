@@ -16,6 +16,7 @@ export const routes: Routes = [
       { path: 'elections/live', loadComponent: () => import('./features/elections/results-live.component').then(m => m.ResultsLiveComponent) },
       { path: 'elections/new', loadComponent: () => import('./features/elections/election-wizard.component').then(m => m.ElectionWizardComponent) },
       { path: 'elections/:id', loadComponent: () => import('./features/elections/election-detail.component').then(m => m.ElectionDetailComponent) },
+      { path: 'elections/:id/padron-edit', loadComponent: () => import('./features/elections/election-padron-edit.component').then(m => m.ElectionPadronEditComponent) },
       { path: 'users', loadComponent: () => import('./features/users/users.component').then(m => m.UsersComponent) },
       { path: 'config', loadComponent: () => import('./features/admin/admin-config.component').then(m => m.AdminConfigComponent) },
     ]
