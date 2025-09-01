@@ -73,7 +73,7 @@ namespace BvgAuthApi.Endpoints
             g.MapGet("/{id}/padron", async (Guid id, BvgDbContext db, ClaimsPrincipal user, IWebHostEnvironment env, IConfiguration cfg) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin)
                 {
@@ -90,7 +90,7 @@ namespace BvgAuthApi.Endpoints
                     HasActa = File.Exists(Path.Combine(dir, p.Id + ".pdf"))
                 });
                 return Results.Ok(items);
-            }).RequireAuthorization();
+            }).RequireAuthorization().DisableAntiforgery();
 
             g.MapPost("/{id}/padron", async (Guid id, IFormFile file, BvgDbContext db) =>
             {
@@ -158,7 +158,7 @@ namespace BvgAuthApi.Endpoints
 
             g.MapGet("/{id}/assignments", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
             {
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 var q = db.ElectionUserAssignments.Where(a => a.ElectionId == id);
                 if (!isAdmin)
@@ -201,7 +201,7 @@ namespace BvgAuthApi.Endpoints
             g.MapPost("/{id}/attendance/{padronId}", async (Guid id, Guid padronId, [FromBody] AttendanceDto dto, BvgDbContext db, IHubContext<LiveHub> hub, ClaimsPrincipal user) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionRegistrar))
                     return Err("forbidden", 403);
@@ -221,7 +221,7 @@ namespace BvgAuthApi.Endpoints
             // Assigned elections for current user and role
             g.MapGet("/assigned", async (string? role, BvgDbContext db, ClaimsPrincipal user) =>
             {
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var r = string.IsNullOrWhiteSpace(role) ? AppRoles.ElectionRegistrar : role!;
                 r = r.Trim();
                 var rLower = r.ToLower();
@@ -234,26 +234,58 @@ namespace BvgAuthApi.Endpoints
             }).RequireAuthorization();
 
             // Batch attendance
-            g.MapPost("/{id}/attendance/batch", async (Guid id, [FromBody] BatchAttendanceDto body, BvgDbContext db, ClaimsPrincipal user) =>
+            g.MapPost("/{id}/attendance/batch", async (Guid id, [FromBody] BatchAttendanceDto body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionRegistrar))
                     return Err("forbidden", 403);
+                var flags = await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id);
+                if (flags?.AttendanceClosed == true) return Err("attendance_closed", 400);
                 var q = db.Padron.Where(p => p.ElectionId == id);
                 if (body.Ids is not null && body.Ids.Count > 0) q = q.Where(p => body.Ids.Contains(p.Id));
-                await q.ExecuteUpdateAsync(u => u.SetProperty(p => p.Attendance, body.Attendance));
+                var list = await q.ToListAsync();
+                foreach (var entry in list)
+                {
+                    if (entry.Attendance != body.Attendance)
+                    {
+                        var old = entry.Attendance;
+                        entry.Attendance = body.Attendance;
+                        db.AttendanceLogs.Add(new AttendanceLog
+                        {
+                            ElectionId = id,
+                            PadronEntryId = entry.Id,
+                            OldAttendance = old,
+                            NewAttendance = entry.Attendance,
+                            UserId = userId
+                        });
+                    }
+                }
+                await db.SaveChangesAsync();
+                // Broadcast summary update for observers/registrars
+                var election = await db.Elections.Include(e => e.Padron).FirstOrDefaultAsync(e => e.Id == id);
+                if (election is not null)
+                {
+                    var total = election.Padron.Count;
+                    var presencial = election.Padron.Count(p => p.Attendance == AttendanceType.Presencial);
+                    var @virtual = election.Padron.Count(p => p.Attendance == AttendanceType.Virtual);
+                    var ausente = election.Padron.Count(p => p.Attendance == AttendanceType.None);
+                    var totalShares = election.Padron.Sum(p => p.Shares);
+                    var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
+                    var locked = (await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id))?.AttendanceClosed == true;
+                    await hub.Clients.All.SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = locked, QuorumMin = election.QuorumMinimo });
+                }
                 return Results.Ok();
-            }).RequireAuthorization();
+            }).RequireAuthorization().DisableAntiforgery();
 
             // Upload proxy (PDF max 10MB)
-            g.MapPost("/{id}/padron/{padronId}/proxy", async (Guid id, Guid padronId, IFormFile file, IWebHostEnvironment env, IConfiguration cfg, BvgDbContext db, ClaimsPrincipal user) =>
+            g.MapPost("/{id}/padron/{padronId}/proxy", async (Guid id, Guid padronId, IFormFile file, IWebHostEnvironment env, IConfiguration cfg, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
                 static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
                 if (file.Length == 0 || file.Length > 10 * 1024 * 1024) return Err("invalid_file_size", 400);
                 if (!string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase)) return Err("invalid_content_type", 400);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionRegistrar))
                     return Err("forbidden", 403);
@@ -266,16 +298,17 @@ namespace BvgAuthApi.Endpoints
                 var path = Path.Combine(dir, padronId + ".pdf");
                 using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write)) await file.CopyToAsync(fs);
                 var url = $"/uploads/elections/{id}/actas/{padronId}.pdf";
+                await hub.Clients.All.SendAsync("actaUploaded", new { ElectionId = id, PadronId = padronId, Url = url });
                 return Results.Ok(new { url });
             }).RequireAuthorization().DisableAntiforgery();
 
             // Alias route: /acta
-            g.MapPost("/{id}/padron/{padronId}/acta", async (Guid id, Guid padronId, IFormFile file, IWebHostEnvironment env, IConfiguration cfg, BvgDbContext db, ClaimsPrincipal user) =>
+            g.MapPost("/{id}/padron/{padronId}/acta", async (Guid id, Guid padronId, IFormFile file, IWebHostEnvironment env, IConfiguration cfg, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
                 static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
                 if (file.Length == 0 || file.Length > 10 * 1024 * 1024) return Err("invalid_file_size", 400);
                 if (!string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase)) return Err("invalid_content_type", 400);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionRegistrar))
                     return Err("forbidden", 403);
@@ -288,15 +321,33 @@ namespace BvgAuthApi.Endpoints
                 var path = Path.Combine(dir, padronId + ".pdf");
                 using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write)) await file.CopyToAsync(fs);
                 var url = $"/uploads/elections/{id}/actas/{padronId}.pdf";
+                await hub.Clients.All.SendAsync("actaUploaded", new { ElectionId = id, PadronId = padronId, Url = url });
                 return Results.Ok(new { url });
             }).RequireAuthorization().DisableAntiforgery();
+
+            // Download acta/proxy PDF (authorized)
+            g.MapGet("/{id}/padron/{padronId}/acta", async (Guid id, Guid padronId, IWebHostEnvironment env, IConfiguration cfg, BvgDbContext db, ClaimsPrincipal user) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin)
+                {
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && (a.Role == AppRoles.ElectionRegistrar || a.Role == AppRoles.ElectionObserver));
+                    if (!hasAssign) return Err("forbidden", 403);
+                }
+                var root = Path.Combine(env.ContentRootPath, cfg["Storage:Root"] ?? "uploads");
+                var path = Path.Combine(root, "elections", id.ToString(), "actas", padronId + ".pdf");
+                if (!System.IO.File.Exists(path)) return Err("not_found", 404);
+                return Results.File(path, "application/pdf");
+            }).RequireAuthorization();
 
             g.MapGet("/{id}/quorum", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
                 var election = await db.Elections.Include(e => e.Padron).FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin)
                 {
@@ -305,13 +356,66 @@ namespace BvgAuthApi.Endpoints
                 }
                 var total = election.Padron.Sum(p => p.Shares);
                 var present = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
-                return Results.Ok(new { Total = total, Present = present, Quorum = total == 0 ? 0 : present / total });
+                var totalShares = total;
+                var presentShares = present;
+                var flags = await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id);
+                var locked = flags?.AttendanceClosed == true;
+                return Results.Ok(new { Total = total, Present = present, Quorum = total == 0 ? 0 : present / total, TotalShares = totalShares, PresentShares = presentShares, QuorumMin = election.QuorumMinimo, Locked = locked });
+            }).RequireAuthorization();
+
+            // Attendance summary (counts per status) for charts
+            g.MapGet("/{id}/attendance/summary", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                var election = await db.Elections.Include(e => e.Padron).FirstOrDefaultAsync(e => e.Id == id);
+                if (election is null) return Err("election_not_found", 404);
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin)
+                {
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && (a.Role == AppRoles.ElectionObserver || a.Role == AppRoles.ElectionRegistrar));
+                    if (!hasAssign) return Err("forbidden", 403);
+                }
+                var total = election.Padron.Count;
+                var presencial = election.Padron.Count(p => p.Attendance == AttendanceType.Presencial);
+                var @virtual = election.Padron.Count(p => p.Attendance == AttendanceType.Virtual);
+                var ausente = election.Padron.Count(p => p.Attendance == AttendanceType.None);
+                var totalShares = election.Padron.Sum(p => p.Shares);
+                var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
+                var flags = await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id);
+                var locked = flags?.AttendanceClosed == true;
+                return Results.Ok(new { total, presencial, @virtual, ausente, totalShares, presentShares, quorumMin = election.QuorumMinimo, locked });
+            }).RequireAuthorization();
+
+            // Attendance logs (audit)
+            g.MapGet("/{id}/attendance/logs", async (Guid id, BvgDbContext db, ClaimsPrincipal user, int? take) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin)
+                {
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && (a.Role == AppRoles.ElectionObserver || a.Role == AppRoles.ElectionRegistrar));
+                    if (!hasAssign) return Err("forbidden", 403);
+                }
+                var limit = take.HasValue && take.Value > 0 ? Math.Min(take.Value, 500) : 200;
+                var logs = await (
+                    from l in db.AttendanceLogs
+                    join u in db.Users on l.UserId equals u.Id into gj
+                    from u in gj.DefaultIfEmpty()
+                    where l.ElectionId == id
+                    orderby l.Timestamp descending
+                    select new { l.PadronEntryId, l.OldAttendance, l.NewAttendance, l.UserId, UserName = (string?)u!.UserName, l.Timestamp }
+                )
+                .Take(limit)
+                .ToListAsync();
+                return Results.Ok(logs);
             }).RequireAuthorization();
 
             g.MapPost("/{id}/votes", async (Guid id, [FromBody] VoteDto dto, BvgDbContext db, IHubContext<LiveHub> hub, ClaimsPrincipal user) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && (a.Role == AppRoles.ElectionRegistrar || a.Role == AppRoles.VoteOperator)))
                     return Err("forbidden", 403);
@@ -338,21 +442,71 @@ namespace BvgAuthApi.Endpoints
             }).RequireAuthorization();
 
             // Attendance marking
-            g.MapPost("/{id}/padron/{padronId}/attendance", async (Guid id, Guid padronId, [FromBody] AttendanceDto dto, BvgDbContext db, ClaimsPrincipal user) =>
+            g.MapPost("/{id}/padron/{padronId}/attendance", async (Guid id, Guid padronId, [FromBody] AttendanceDto dto, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin)
                 {
                     var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionRegistrar);
                     if (!hasAssign) return Err("forbidden", 403);
                 }
+                var flags = await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id);
+                if (flags?.AttendanceClosed == true) return Err("attendance_closed", 400);
                 var entry = await db.Padron.FirstOrDefaultAsync(p => p.Id == padronId && p.ElectionId == id);
                 if (entry is null) return Err("padron_entry_not_found", 404);
+                var oldAtt = entry.Attendance;
                 entry.Attendance = dto.Attendance;
+                db.AttendanceLogs.Add(new AttendanceLog
+                {
+                    ElectionId = id,
+                    PadronEntryId = padronId,
+                    OldAttendance = oldAtt,
+                    NewAttendance = entry.Attendance,
+                    UserId = userId
+                });
                 await db.SaveChangesAsync();
+                // Broadcast per-row update and quorum summary (optional)
+                await hub.Clients.All.SendAsync("attendanceUpdated", new { ElectionId = id, PadronId = padronId, Attendance = entry.Attendance.ToString() });
+                var election = await db.Elections.Include(e => e.Padron).FirstOrDefaultAsync(e => e.Id == id);
+                if (election is not null)
+                {
+                    var total = election.Padron.Count;
+                    var presencial = election.Padron.Count(p => p.Attendance == AttendanceType.Presencial);
+                    var @virtual = election.Padron.Count(p => p.Attendance == AttendanceType.Virtual);
+                    var ausente = election.Padron.Count(p => p.Attendance == AttendanceType.None);
+                    var totalShares = election.Padron.Sum(p => p.Shares);
+                    var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
+                    var locked = (await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id))?.AttendanceClosed == true;
+                    await hub.Clients.All.SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = locked, QuorumMin = election.QuorumMinimo });
+                }
                 return Results.Ok();
+            }).RequireAuthorization().DisableAntiforgery();
+
+            // Attendance lock/unlock (admins)
+            g.MapPost("/{id}/attendance/lock", async (Guid id, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
+                var f = await db.ElectionFlags.FirstOrDefaultAsync(x => x.ElectionId == id);
+                if (f is null) { f = new ElectionFlag { ElectionId = id, AttendanceClosed = true }; db.ElectionFlags.Add(f); }
+                else f.AttendanceClosed = true;
+                await db.SaveChangesAsync();
+                await hub.Clients.All.SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = true });
+                return Results.Ok(new { locked = true });
+            }).RequireAuthorization();
+
+            g.MapPost("/{id}/attendance/unlock", async (Guid id, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
+                var f = await db.ElectionFlags.FirstOrDefaultAsync(x => x.ElectionId == id);
+                if (f is null) { f = new ElectionFlag { ElectionId = id, AttendanceClosed = false }; db.ElectionFlags.Add(f); }
+                else f.AttendanceClosed = false;
+                await db.SaveChangesAsync();
+                await hub.Clients.All.SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = false });
+                return Results.Ok(new { locked = false });
             }).RequireAuthorization();
 
             g.MapGet("/{id}/results", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
@@ -360,7 +514,7 @@ namespace BvgAuthApi.Endpoints
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
                 var election = await db.Elections.Include(e => e.Questions).ThenInclude(q => q.Options).Include(e => e.Votes).FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
-                var userId = user.FindFirst("sub")?.Value ?? "";
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin)
                 {

@@ -53,6 +53,35 @@ namespace BvgAuthApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AttendanceLogs",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ElectionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PadronEntryId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OldAttendance = table.Column<int>(type: "integer", nullable: false),
+                    NewAttendance = table.Column<int>(type: "integer", nullable: false),
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    Timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AttendanceLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ElectionFlags",
+                columns: table => new
+                {
+                    ElectionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AttendanceClosed = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ElectionFlags", x => x.ElectionId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Elections",
                 columns: table => new
                 {
@@ -360,6 +389,12 @@ namespace BvgAuthApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "AttendanceLogs");
+
+            migrationBuilder.DropTable(
+                name: "ElectionFlags");
 
             migrationBuilder.DropTable(
                 name: "ElectionUserAssignments");

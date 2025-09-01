@@ -4,6 +4,7 @@
     {
         public const string GlobalAdmin = "GlobalAdmin";
         public const string VoteAdmin   = "VoteAdmin";
+        public const string Functional  = "Functional";
         public const string VoteOperator= "VoteOperator";
         public const string ElectionRegistrar = "ElectionRegistrar";
         public const string ElectionObserver  = "ElectionObserver";
@@ -44,6 +45,23 @@
         None,
         Virtual,
         Presencial
+    }
+
+    public class AttendanceLog
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid ElectionId { get; set; }
+        public Guid PadronEntryId { get; set; }
+        public AttendanceType OldAttendance { get; set; }
+        public AttendanceType NewAttendance { get; set; }
+        public string UserId { get; set; } = default!;
+        public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+    }
+
+    public class ElectionFlag
+    {
+        public Guid ElectionId { get; set; }
+        public bool AttendanceClosed { get; set; }
     }
 
     public class PadronEntry

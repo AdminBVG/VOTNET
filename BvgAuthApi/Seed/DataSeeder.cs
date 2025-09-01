@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using BvgAuthApi.Data;
 using BvgAuthApi.Models;
 
@@ -14,8 +15,8 @@ namespace BvgAuthApi.Seed
             var rm  = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var um  = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-            // Roles
-            foreach (var r in new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.VoteOperator, AppRoles.ElectionRegistrar, AppRoles.ElectionObserver, AppRoles.ElectionVoter })
+            // Roles globales de Identity. Los roles por elección NO se crean en Identity.
+            foreach (var r in new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.Functional })
                 if (!await rm.RoleExistsAsync(r)) await rm.CreateAsync(new IdentityRole(r));
 
             // Admin
@@ -66,6 +67,39 @@ namespace BvgAuthApi.Seed
                     user.IsActive = true;
                     await um.UpdateAsync(user);
                 }
+            }
+        }
+
+        // Ensure runtime tables that may not be covered by migrations yet
+        public static async Task EnsureRuntimeTablesAsync(IServiceProvider sp)
+        {
+            using var scope = sp.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<BvgDbContext>();
+            try
+            {
+                // Create AttendanceLogs if not exists (PostgreSQL syntax)
+                var sql = @"
+                CREATE TABLE IF NOT EXISTS ""AttendanceLogs"" (
+                    ""Id"" uuid PRIMARY KEY,
+                    ""ElectionId"" uuid NOT NULL,
+                    ""PadronEntryId"" uuid NOT NULL,
+                    ""OldAttendance"" integer NOT NULL,
+                    ""NewAttendance"" integer NOT NULL,
+                    ""UserId"" text NOT NULL,
+                    ""Timestamp"" timestamptz NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ""IX_AttendanceLogs_ElectionId"" ON ""AttendanceLogs""(""ElectionId"");
+                CREATE INDEX IF NOT EXISTS ""IX_AttendanceLogs_PadronEntryId"" ON ""AttendanceLogs""(""PadronEntryId"");
+                CREATE TABLE IF NOT EXISTS ""ElectionFlags"" (
+                    ""ElectionId"" uuid PRIMARY KEY,
+                    ""AttendanceClosed"" boolean NOT NULL DEFAULT FALSE
+                );
+                ";
+                await db.Database.ExecuteSqlRawAsync(sql);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SEED] EnsureRuntimeTables failed: {ex.Message}");
             }
         }
     }

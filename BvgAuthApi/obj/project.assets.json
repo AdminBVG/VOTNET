@@ -4432,7 +4432,7 @@
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 9.0.8",
       "Microsoft.AspNetCore.Identity.EntityFrameworkCore >= 9.0.8",
       "Microsoft.AspNetCore.OpenApi >= 9.0.4",
-      "Microsoft.EntityFrameworkCore.Design >= 9.0.8",
+      "Microsoft.EntityFrameworkCore.Design >= 9.*",
       "Microsoft.OpenApi >= 1.6.23",
       "Npgsql.EntityFrameworkCore.PostgreSQL >= 9.0.4",
       "Swashbuckle.AspNetCore >= 9.0.3"
@@ -4507,7 +4507,7 @@
             "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "suppressParent": "All",
             "target": "Package",
-            "version": "[9.0.8, )"
+            "version": "[9.*, )"
           },
           "Microsoft.OpenApi": {
             "target": "Package",

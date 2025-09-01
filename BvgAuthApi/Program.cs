@@ -16,6 +16,10 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Keep JWT claim types as-is (preserve 'sub' and 'role')
+System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
+
 // Overlay persisted admin config (data/appconfig.json) if present
 try
 {
@@ -71,6 +75,10 @@ builder.Services
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<BvgDbContext>();
+builder.Services.ConfigureHttpJsonOptions(o =>
+    {
+        o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // JWT
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
@@ -204,6 +212,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<BvgDbContext>();
     db.Database.Migrate();
     await DataSeeder.SeedAsync(app.Services);
+    await DataSeeder.EnsureRuntimeTablesAsync(app.Services);
 }
 
 app.Run();

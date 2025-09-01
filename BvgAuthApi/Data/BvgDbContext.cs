@@ -20,6 +20,8 @@ namespace BvgAuthApi.Data
         public DbSet<PadronEntry> Padron => Set<PadronEntry>();
         public DbSet<ElectionUserAssignment> ElectionUserAssignments => Set<ElectionUserAssignment>();
         public DbSet<VoteRecord> Votes => Set<VoteRecord>();
+        public DbSet<AttendanceLog> AttendanceLogs => Set<AttendanceLog>();
+        public DbSet<ElectionFlag> ElectionFlags => Set<ElectionFlag>();
 
         protected override void OnModelCreating(ModelBuilder b)
         {
@@ -54,6 +56,14 @@ namespace BvgAuthApi.Data
             b.Entity<VoteRecord>(v =>
             {
                 v.HasKey(x => x.Id);
+            });
+            b.Entity<AttendanceLog>(l =>
+            {
+                l.HasKey(x => x.Id);
+            });
+            b.Entity<ElectionFlag>(f =>
+            {
+                f.HasKey(x => x.ElectionId);
             });
         }
     }

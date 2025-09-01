@@ -27,12 +27,14 @@ namespace BvgAuthApi.Endpoints
                 if (!string.IsNullOrEmpty(role))
                 {
                     var lower = role.ToLowerInvariant();
-                    if (lower is "funcional" or "ninguno" or "none" or "sinrol" or "sin_rol")
+                    if (lower is "ninguno" or "none" or "sinrol" or "sin_rol")
                         role = null;
+                    else if (lower == "funcional")
+                        role = AppRoles.Functional;
                 }
                 if (!string.IsNullOrEmpty(role))
                 {
-                    var allowed = new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin };
+                    var allowed = new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.Functional };
                     if (!allowed.Contains(role)) return Err("role_not_allowed", 400);
                     if (!await rm.RoleExistsAsync(role)) return Err("role_not_found", 400);
                 }
@@ -45,7 +47,7 @@ namespace BvgAuthApi.Endpoints
 
             g.MapGet("/", async (UserManager<ApplicationUser> um) =>
             {
-                var allowed = new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin };
+                var allowed = new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.Functional };
                 var users = await um.Users.Select(u => new { u.Id, u.UserName, u.Email, u.IsActive }).ToListAsync();
                 var result = new List<object>(users.Count);
                 foreach (var u in users)
@@ -96,11 +98,13 @@ namespace BvgAuthApi.Endpoints
                 if (!string.IsNullOrEmpty(role))
                 {
                     var lower = role.ToLowerInvariant();
-                    if (lower is "funcional" or "ninguno" or "none" or "sinrol" or "sin_rol")
+                    if (lower is "ninguno" or "none" or "sinrol" or "sin_rol")
                         role = null;
+                    else if (lower == "funcional")
+                        role = AppRoles.Functional;
                 }
 
-                var allowed = new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin };
+                var allowed = new[] { AppRoles.GlobalAdmin, AppRoles.VoteAdmin, AppRoles.Functional };
                 // Remover roles globales actuales
                 var current = await um.GetRolesAsync(u);
                 foreach (var r in current.Where(r => allowed.Contains(r)))

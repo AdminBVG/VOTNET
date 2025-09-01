@@ -42,7 +42,8 @@ interface UserDto { id: string; userName: string; email: string; isActive: boole
         <mat-form-field appearance="outline">
           <mat-label>Rol global (opcional)</mat-label>
           <mat-select formControlName="role">
-            <mat-option [value]="''">Funcional (sin rol global)</mat-option>
+            <mat-option [value]="''">Sin rol global</mat-option>
+            <mat-option value="Functional">Funcional</mat-option>
             <mat-option value="GlobalAdmin">GlobalAdmin</mat-option>
             <mat-option value="VoteAdmin">VoteAdmin</mat-option>
           </mat-select>
@@ -69,7 +70,8 @@ interface UserDto { id: string; userName: string; email: string; isActive: boole
         <td mat-cell *matCellDef="let u" class="cell-role">
           <mat-form-field appearance="outline" class="mini">
             <mat-select [value]="u.role || ''" (selectionChange)="updateRole(u, $event.value)">
-              <mat-option [value]="''">Funcional</mat-option>
+              <mat-option [value]="''">Sin rol</mat-option>
+              <mat-option value="Functional">Funcional</mat-option>
               <mat-option value="GlobalAdmin">GlobalAdmin</mat-option>
               <mat-option value="VoteAdmin">VoteAdmin</mat-option>
             </mat-select>

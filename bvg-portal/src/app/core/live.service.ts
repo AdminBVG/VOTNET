@@ -19,4 +19,20 @@ export class LiveService {
   onVoteRegistered(handler: (payload: any) => void){
     this.connection.on('voteRegistered', handler);
   }
+
+  onAttendanceUpdated(handler: (payload: { ElectionId:string; PadronId:string; Attendance:string }) => void){
+    this.connection.on('attendanceUpdated', handler as any);
+  }
+
+  onAttendanceSummary(handler: (payload: { ElectionId:string; Total:number; Presencial:number; Virtual:number; Ausente:number }) => void){
+    this.connection.on('attendanceSummary', handler as any);
+  }
+
+  onActaUploaded(handler: (payload: { ElectionId:string; PadronId:string; Url:string }) => void){
+    this.connection.on('actaUploaded', handler as any);
+  }
+
+  onAttendanceLockChanged(handler: (payload: { ElectionId:string; Locked:boolean }) => void){
+    this.connection.on('attendanceLockChanged', handler as any);
+  }
 }

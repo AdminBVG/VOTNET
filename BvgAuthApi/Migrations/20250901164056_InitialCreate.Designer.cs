@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BvgAuthApi.Migrations
 {
     [DbContext(typeof(BvgDbContext))]
-    [Migration("20250828173606_InitialCreate")]
+    [Migration("20250901164056_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -92,6 +92,36 @@ namespace BvgAuthApi.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("BvgAuthApi.Models.AttendanceLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ElectionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("NewAttendance")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OldAttendance")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PadronEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AttendanceLogs");
+                });
+
             modelBuilder.Entity("BvgAuthApi.Models.Election", b =>
                 {
                     b.Property<Guid>("Id")
@@ -120,6 +150,20 @@ namespace BvgAuthApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Elections");
+                });
+
+            modelBuilder.Entity("BvgAuthApi.Models.ElectionFlag", b =>
+                {
+                    b.Property<Guid>("ElectionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AttendanceClosed")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("ElectionId");
+
+                    b.ToTable("ElectionFlags");
                 });
 
             modelBuilder.Entity("BvgAuthApi.Models.ElectionOption", b =>
