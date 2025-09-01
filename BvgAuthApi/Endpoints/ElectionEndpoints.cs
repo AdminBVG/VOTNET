@@ -7,6 +7,7 @@ using BvgAuthApi.Data;
 using BvgAuthApi.Hubs;
 using BvgAuthApi.Models;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace BvgAuthApi.Endpoints
 {
@@ -234,7 +235,7 @@ namespace BvgAuthApi.Endpoints
             }).RequireAuthorization();
 
             // Batch attendance
-            g.MapPost("/{id}/attendance/batch", async (Guid id, [FromBody] BatchAttendanceDto body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            g.MapPost("/{id}/attendance/batch", async (Guid id, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
                 var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
@@ -243,15 +244,42 @@ namespace BvgAuthApi.Endpoints
                     return Err("forbidden", 403);
                 var flags = await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id);
                 if (flags?.AttendanceClosed == true) return Err("attendance_closed", 400);
+                // Parse attendance from body (accept string or number)
+                if (!body.TryGetProperty("attendance", out var attProp)) return Err("missing_attendance", 400);
+                AttendanceType newAtt;
+                if (attProp.ValueKind == JsonValueKind.Number && attProp.TryGetInt32(out var attNum))
+                {
+                    newAtt = attNum == 2 ? AttendanceType.Presencial : attNum == 1 ? AttendanceType.Virtual : AttendanceType.None;
+                }
+                else if (attProp.ValueKind == JsonValueKind.String)
+                {
+                    var s = attProp.GetString() ?? string.Empty;
+                    newAtt = s.Equals("Presencial", StringComparison.OrdinalIgnoreCase) ? AttendanceType.Presencial
+                         : s.Equals("Virtual", StringComparison.OrdinalIgnoreCase) ? AttendanceType.Virtual
+                         : AttendanceType.None;
+                }
+                else return Err("invalid_attendance", 400);
+
+                // Optional ids
+                var idsFilter = new List<Guid>();
+                if (body.TryGetProperty("ids", out var idsEl) && idsEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var it in idsEl.EnumerateArray())
+                    {
+                        if (it.ValueKind == JsonValueKind.String && Guid.TryParse(it.GetString(), out var gid)) idsFilter.Add(gid);
+                        else if (it.ValueKind == JsonValueKind.Object && it.TryGetProperty("id", out var idStr) && Guid.TryParse(idStr.GetString(), out var gid2)) idsFilter.Add(gid2);
+                    }
+                }
+
                 var q = db.Padron.Where(p => p.ElectionId == id);
-                if (body.Ids is not null && body.Ids.Count > 0) q = q.Where(p => body.Ids.Contains(p.Id));
+                if (idsFilter.Count > 0) q = q.Where(p => idsFilter.Contains(p.Id));
                 var list = await q.ToListAsync();
                 foreach (var entry in list)
                 {
-                    if (entry.Attendance != body.Attendance)
+                    if (entry.Attendance != newAtt)
                     {
                         var old = entry.Attendance;
-                        entry.Attendance = body.Attendance;
+                        entry.Attendance = newAtt;
                         db.AttendanceLogs.Add(new AttendanceLog
                         {
                             ElectionId = id,
@@ -442,7 +470,7 @@ namespace BvgAuthApi.Endpoints
             }).RequireAuthorization();
 
             // Attendance marking
-            g.MapPost("/{id}/padron/{padronId}/attendance", async (Guid id, Guid padronId, [FromBody] AttendanceDto dto, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            g.MapPost("/{id}/padron/{padronId}/attendance", async (Guid id, Guid padronId, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
                 var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
@@ -454,10 +482,25 @@ namespace BvgAuthApi.Endpoints
                 }
                 var flags = await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id);
                 if (flags?.AttendanceClosed == true) return Err("attendance_closed", 400);
+                // Parse attendance
+                if (!body.TryGetProperty("attendance", out var attProp)) return Err("missing_attendance", 400);
+                AttendanceType newAtt;
+                if (attProp.ValueKind == JsonValueKind.Number && attProp.TryGetInt32(out var attNum))
+                {
+                    newAtt = attNum == 2 ? AttendanceType.Presencial : attNum == 1 ? AttendanceType.Virtual : AttendanceType.None;
+                }
+                else if (attProp.ValueKind == JsonValueKind.String)
+                {
+                    var s = attProp.GetString() ?? string.Empty;
+                    newAtt = s.Equals("Presencial", StringComparison.OrdinalIgnoreCase) ? AttendanceType.Presencial
+                         : s.Equals("Virtual", StringComparison.OrdinalIgnoreCase) ? AttendanceType.Virtual
+                         : AttendanceType.None;
+                }
+                else return Err("invalid_attendance", 400);
                 var entry = await db.Padron.FirstOrDefaultAsync(p => p.Id == padronId && p.ElectionId == id);
                 if (entry is null) return Err("padron_entry_not_found", 404);
                 var oldAtt = entry.Attendance;
-                entry.Attendance = dto.Attendance;
+                entry.Attendance = newAtt;
                 db.AttendanceLogs.Add(new AttendanceLog
                 {
                     ElectionId = id,

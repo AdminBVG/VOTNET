@@ -1,4 +1,4 @@
-﻿import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { LiveService } from '../../core/live.service';
@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/auth.service';
 
 interface PadronRow { id:string; shareholderId:string; shareholderName:string; shares:number; attendance:string }
@@ -16,7 +17,7 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; s
 @Component({
   selector: 'app-attendance-register',
   standalone: true,
-  imports: [NgIf, NgFor, NgStyle, FormsModule, MatTableModule, MatButtonModule, MatSelectModule, MatCheckboxModule, MatSnackBarModule],
+  imports: [NgIf, NgFor, NgStyle, FormsModule, MatTableModule, MatButtonModule, MatSelectModule, MatCheckboxModule, MatSnackBarModule, MatTooltipModule],
   template: `
   <div class="page">
     <h2>Registro de asistencia</h2>
@@ -42,11 +43,11 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; s
         <mat-option value="Virtual">Virtual</mat-option>
         <mat-option value="None">Ausente</mat-option>
       </mat-select>
-      <button mat-stroked-button (click)="markAll()" [disabled]="locked">Marcar todo</button>
-      <button mat-raised-button color="primary" (click)="markSelected()" [disabled]="locked || !anySelected()">Marcar seleccionados</button>
+      <button mat-stroked-button (click)="markAll()" [disabled]="locked" [matTooltip]="locked ? 'Asistencia cerrada' : ''">Marcar todo</button>
+      <button mat-raised-button color="primary" (click)="markSelected()" [disabled]="locked || !anySelected()" [matTooltip]="locked ? 'Asistencia cerrada' : (!anySelected() ? 'Seleccione al menos un registro' : '')">Marcar seleccionados</button>
     </div>
     <div class="summary" *ngIf="rows().length">
-      Total: {{total()}} Â· Presenciales: {{count('Presencial')}} Â· Virtuales: {{count('Virtual')}} Â· Ausentes: {{count('None')}}
+      Total: {{total()}} · Presenciales: {{count('Presencial')}} · Virtuales: {{count('Virtual')}} · Ausentes: {{count('None')}}
       <div class="bar"><div class="p" [style.width.%]="presentPct()"></div></div>
     </div>
     <table mat-table [dataSource]="rows()" class="mat-elevation-z1 compact" *ngIf="rows().length">
@@ -61,7 +62,7 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; s
       <tr mat-header-row *matHeaderRowDef="cols"></tr>
       <tr mat-row *matRowDef="let row; columns: cols;"></tr>
     </table>
-    <div *ngIf="!rows().length" class="muted">Sin padrÃ³n o sin permisos.</div>
+    <div *ngIf="!rows().length" class="muted">Sin padrón o sin permisos.</div>
   </div>
   `,
   styles: [`
@@ -126,7 +127,7 @@ export class AttendanceRegisterComponent{
   }
   set(r: PadronRow, att: 'Presencial'|'Virtual'|'None'){
     if (this.locked) { this.snack.open('Asistencia cerrada','OK',{duration:1500}); return; }
-    this.http.post(`/api/elections/${this.id}/padron/${r.id}/attendance`, { attendance: att }).subscribe({
+    this.http.post(`/api/elections/${this.id}/padron/${r.id}/attendance`, { attendance: att === 'Presencial' ? 2 : (att === 'Virtual' ? 1 : 0) }).subscribe({
       next: _=> { r.attendance = att; this.snack.open('Asistencia actualizada','OK',{duration:1300}); },
       error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
     });
@@ -135,7 +136,7 @@ export class AttendanceRegisterComponent{
   markAll(){
     if (this.locked) { this.snack.open('Asistencia cerrada','OK',{duration:1500}); return; }
     if(!confirm(`Aplicar "${this.bulkStatus}" a todos?`)) return;
-    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus }).subscribe({
+    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: (this.bulkStatus === 'Presencial' ? 2 : (this.bulkStatus === 'Virtual' ? 1 : 0)) }).subscribe({
       next: _=> { this.snack.open('Marcado masivo aplicado','OK',{duration:1200}); this.load(); },
       error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
     });
@@ -144,7 +145,7 @@ export class AttendanceRegisterComponent{
     if (this.locked) { this.snack.open('Asistencia cerrada','OK',{duration:1500}); return; }
     const ids = Object.keys(this.selected).filter(k=>this.selected[k]); if(!ids.length) return;
     if(!confirm(`Aplicar "${this.bulkStatus}" a ${ids.length} seleccionados?`)) return;
-    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, ids }).subscribe({
+    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: (this.bulkStatus === 'Presencial' ? 2 : (this.bulkStatus === 'Virtual' ? 1 : 0)), ids }).subscribe({
       next: _=> { this.snack.open('Seleccionados actualizados','OK',{duration:1200}); this.load(); },
       error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
     });
@@ -161,14 +162,14 @@ export class AttendanceRegisterComponent{
   private mapAttendanceError(err: any): string {
     const code = (err && err.error && err.error.error) ? String(err.error.error) : '';
     switch (code) {
-      case 'attendance_closed': return 'La asistencia está cerrada para esta elección.';
-      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elección.';
-      case 'padron_entry_not_found': return 'No se encontró el registro del padrón.';
+      case 'attendance_closed': return 'La asistencia est� cerrada para esta elecci�n.';
+      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elecci�n.';
+      case 'padron_entry_not_found': return 'No se encontr� el registro del padr�n.';
       default:
-        if (err && err.status === 0) return 'No hay conexión con el servidor.';
-        if (err && err.status === 400) return 'Solicitud inválida.';
+        if (err && err.status === 0) return 'No hay conexi�n con el servidor.';
+        if (err && err.status === 400) return 'Solicitud inv�lida.';
         if (err && err.status === 403) return 'Acceso denegado.';
-        return 'Ocurrió un error al actualizar la asistencia.';
+        return 'Ocurri� un error al actualizar la asistencia.';
     }
   }
 }
