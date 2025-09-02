@@ -4,6 +4,7 @@ import { NgIf, DatePipe, AsyncPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
 import { AuthService } from '../../core/auth.service';
+import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
 
 @Component({
   selector: 'app-dashboard',
@@ -113,7 +114,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const isAdmin = this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin');
     let url = '/api/elections';
     if (!isAdmin) {
-      const role = this.auth.roles.find(r => ['AttendanceRegistrar','VoteRegistrar','ElectionVoter','ElectionObserver'].includes(r)) || 'AttendanceRegistrar';
+      const role = this.auth.roles.find(r => ALLOWED_ASSIGNMENT_ROLES.includes(r as any)) || Roles.AttendanceRegistrar;
       url = `/api/elections/assigned?role=${role}`;
     }
     this.http.get<any[]>(url).subscribe({

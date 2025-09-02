@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { Roles } from '../../core/constants/roles';
 
 interface AssignedDto { id: string; name: string; scheduledAt: string; isClosed: boolean; }
 
@@ -44,7 +45,7 @@ export class AttendanceListComponent {
   items = signal<AssignedDto[]>([]);
   constructor(){ this.load(); }
   load(){
-    const role = 'AttendanceRegistrar';
+    const role = Roles.AttendanceRegistrar;
     this.http.get<AssignedDto[]>(`/api/elections/assigned?role=${role}`).subscribe({ next: d=> this.items.set(d||[]), error: _=> this.items.set([]) });
   }
   goReq(id: string){ this.router.navigate(['/attendance', id, 'requirements']); }

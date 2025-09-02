@@ -22,6 +22,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { FilterPresentPipe } from './filter-present.pipe';
 import { AuthService } from '../../core/auth.service';
+import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
 
 @Component({
   selector: 'app-election-detail',
@@ -132,7 +133,7 @@ import { AuthService } from '../../core/auth.service';
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Rol</mat-label>
-            <input matInput formControlName="role" placeholder="ElectionObserver | AttendanceRegistrar | VoteRegistrar">
+            <input matInput formControlName="role" [placeholder]="assignmentRoles.join(' | ')">
           </mat-form-field>
           <button mat-raised-button color="primary" [disabled]="assignForm.invalid">Agregar</button>
         </form>
@@ -257,6 +258,7 @@ export class ElectionDetailComponent implements AfterViewInit {
   @ViewChild(MatSort) sort!: MatSort;
 
   assignForm = inject(FormBuilder).group({ userId: ['', Validators.required], role: ['', Validators.required] });
+  assignmentRoles = ALLOWED_ASSIGNMENT_ROLES;
 
   constructor(){
     this.id.set(this.route.snapshot.params['id']);
@@ -399,10 +401,10 @@ export class ElectionDetailComponent implements AfterViewInit {
   get canAttend(){
     if (this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin')) return true;
     const me = this.auth.payload?.sub;
-    return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === 'AttendanceRegistrar');
+    return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === Roles.AttendanceRegistrar);
   }
   get canRegister(){
-    return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole('VoteRegistrar');
+    return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole(Roles.VoteRegistrar);
   }
   get canClose(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
 }
