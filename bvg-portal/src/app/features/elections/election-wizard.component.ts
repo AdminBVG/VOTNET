@@ -13,7 +13,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import * as XLSX from 'xlsx';
-import { Roles, ALLOWED_ASSIGNMENT_ROLES, Role } from '../../core/constants/roles';
+import { ALLOWED_ASSIGNMENT_ROLES, Role } from '../../core/constants/roles';
 import { firstValueFrom } from 'rxjs';
 
 interface User { id: string; userName: string; email: string; isActive: boolean; }
@@ -263,7 +263,7 @@ export class ElectionWizardComponent {
     if (!users.length) return;
     this.assignments.set([
       ...this.assignments(),
-      ...users.map(u=>({user:u, role: Roles.AttendanceRegistrar}))
+      ...users.map(u=>({user:u, role: 'AttendanceRegistrar'}))
     ]);
     this.selectedUsersAttendance.setValue([]);
   }
@@ -272,7 +272,7 @@ export class ElectionWizardComponent {
     if (!users.length) return;
     this.assignments.set([
       ...this.assignments(),
-      ...users.map(u=>({user:u, role: Roles.VoteRegistrar}))
+      ...users.map(u=>({user:u, role: 'VoteRegistrar'}))
     ]);
     this.selectedUsersVoting.setValue([]);
   }
