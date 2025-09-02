@@ -60,7 +60,7 @@ namespace BvgAuthApi.Endpoints
                 db.Elections.Add(e);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/elections/{e.Id}", new { e.Id });
-            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin)).DisableAntiforgery();
 
             g.MapGet("/", async (BvgDbContext db) =>
                 Results.Ok(await db.Elections.AsNoTracking()
