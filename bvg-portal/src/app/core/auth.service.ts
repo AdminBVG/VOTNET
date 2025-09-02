@@ -15,7 +15,11 @@ export class AuthService {
   private cfg = inject(ConfigService);
   private msal: PublicClientApplication | null = null;
 
-  get token(): string | null { return localStorage.getItem('token'); }
+  get token(): string | null {
+    const raw = localStorage.getItem('token');
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return raw; }
+  }
   get isAuthenticated(): boolean { return !!this.token; }
   get payload(): any | null {
     const t = this.token; if (!t) return null;
@@ -50,7 +54,7 @@ export class AuthService {
     );
   }
 
-  setToken(token: string) { localStorage.setItem('token', token); }
+  setToken(token: string) { localStorage.setItem('token', JSON.stringify(token)); }
   logout() { localStorage.removeItem('token'); this.router.navigateByUrl('/login'); }
 
   // Solicita al backend que emita cookie/token XSRF para el SPA

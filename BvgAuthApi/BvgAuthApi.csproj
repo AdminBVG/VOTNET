@@ -21,4 +21,11 @@
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.3.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="../shared/roles.json">
+      <Link>roles.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
