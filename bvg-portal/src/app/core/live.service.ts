@@ -28,6 +28,10 @@ export class LiveService {
     this.connection.on('attendanceSummary', handler as any);
   }
 
+  onQuorumUpdated(handler: (payload: { ElectionId:string; TotalShares:number; PresentShares:number; Quorum:number }) => void){
+    this.connection.on('quorumUpdated', handler as any);
+  }
+
   onActaUploaded(handler: (payload: { ElectionId:string; PadronId:string; Url:string }) => void){
     this.connection.on('actaUploaded', handler as any);
   }

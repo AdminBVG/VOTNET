@@ -12,6 +12,7 @@ export const routes: Routes = [
       { path: 'attendance/:id/history', loadComponent: () => import('./features/attendance/attendance-history.component').then(m => m.AttendanceHistoryComponent) },
       { path: 'attendance/:id/requirements', loadComponent: () => import('./features/attendance/attendance-requirements.component').then(m => m.AttendanceRequirementsComponent) },
       { path: 'attendance/:id/register', loadComponent: () => import('./features/attendance/attendance-register.component').then(m => m.AttendanceRegisterComponent) },
+      { path: 'votes', loadComponent: () => import('./features/elections/vote-list.component').then(m => m.VoteListComponent) },
       // Removed legacy elections list view; wizard replaces it
       { path: 'elections/live', loadComponent: () => import('./features/elections/results-live.component').then(m => m.ResultsLiveComponent) },
       { path: 'elections/new', loadComponent: () => import('./features/elections/election-wizard.component').then(m => m.ElectionWizardComponent) },

@@ -7,7 +7,7 @@ namespace BvgAuthApi.Endpoints
     {
         private record AppConfigDto(string StorageRoot, SmtpDto Smtp, AzureAdDto AzureAd, BrandingDto Branding);
         private record SmtpDto(string Host, int Port, string User, string From);
-        private record AzureAdDto(string TenantId, string ClientId);
+        private record AzureAdDto(string TenantId, string ClientId, string ClientSecret);
         private record BrandingDto(string LogoUrl);
 
         public static IEndpointRouteBuilder MapConfig(this IEndpointRouteBuilder app)
@@ -25,7 +25,8 @@ namespace BvgAuthApi.Endpoints
                 );
                 var azure = new AzureAdDto(
                     cfg["AzureAd:TenantId"] ?? "",
-                    cfg["AzureAd:ClientId"] ?? ""
+                    cfg["AzureAd:ClientId"] ?? "",
+                    cfg["AzureAd:ClientSecret"] ?? ""
                 );
                 var branding = new BrandingDto(cfg["Branding:LogoUrl"] ?? "");
                 return Results.Ok(new AppConfigDto(storage, smtp, azure, branding));
