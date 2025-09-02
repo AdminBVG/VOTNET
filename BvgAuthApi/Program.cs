@@ -27,8 +27,8 @@ try
     var cfgFile = Path.Combine(dataDir, "appconfig.json");
     if (File.Exists(cfgFile))
     {
-        using var s = File.OpenRead(cfgFile);
-        var doc = JsonDocument.Parse(s);
+        using var stream = File.OpenRead(cfgFile);
+        var doc = JsonDocument.Parse(stream);
         if (doc.RootElement.TryGetProperty("StorageRoot", out var storage))
             builder.Configuration["Storage:Root"] = storage.GetString();
         if (doc.RootElement.TryGetProperty("Smtp", out var smtp))
@@ -42,7 +42,7 @@ try
         {
             if (azure.TryGetProperty("TenantId", out var t)) builder.Configuration["AzureAd:TenantId"] = t.GetString();
             if (azure.TryGetProperty("ClientId", out var c)) builder.Configuration["AzureAd:ClientId"] = c.GetString();
-            if (azure.TryGetProperty("ClientSecret", out var s)) builder.Configuration["AzureAd:ClientSecret"] = s.GetString();
+            if (azure.TryGetProperty("ClientSecret", out var secret)) builder.Configuration["AzureAd:ClientSecret"] = secret.GetString();
         }
         if (doc.RootElement.TryGetProperty("Branding", out var branding))
         {
