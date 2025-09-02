@@ -44,7 +44,7 @@ export class AttendanceListComponent {
   items = signal<AssignedDto[]>([]);
   constructor(){ this.load(); }
   load(){
-    const role = this.auth.roles.find(r => ['ElectionRegistrar','ElectionVoter','ElectionObserver'].includes(r)) || 'ElectionRegistrar';
+    const role = 'AttendanceRegistrar';
     this.http.get<AssignedDto[]>(`/api/elections/assigned?role=${role}`).subscribe({ next: d=> this.items.set(d||[]), error: _=> this.items.set([]) });
   }
   goReq(id: string){ this.router.navigate(['/attendance', id, 'requirements']); }

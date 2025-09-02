@@ -132,7 +132,7 @@ import { AuthService } from '../../core/auth.service';
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Rol</mat-label>
-            <input matInput formControlName="role" placeholder="ElectionObserver | ElectionRegistrar">
+            <input matInput formControlName="role" placeholder="ElectionObserver | AttendanceRegistrar | VoteRegistrar">
           </mat-form-field>
           <button mat-raised-button color="primary" [disabled]="assignForm.invalid">Agregar</button>
         </form>
@@ -399,10 +399,10 @@ export class ElectionDetailComponent implements AfterViewInit {
   get canAttend(){
     if (this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin')) return true;
     const me = this.auth.payload?.sub;
-    return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === 'ElectionRegistrar');
+    return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === 'AttendanceRegistrar');
   }
   get canRegister(){
-    return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole('ElectionRegistrar');
+    return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole('VoteRegistrar');
   }
   get canClose(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
 }
