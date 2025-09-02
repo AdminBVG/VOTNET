@@ -8,7 +8,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   // Evitar adjuntar Authorization en endpoints de auth
   const isAuthEndpoint = req.url.startsWith('/api/auth');
-  const token = isAuthEndpoint ? null : localStorage.getItem('token');
+  const raw = isAuthEndpoint ? null : localStorage.getItem('token');
+  let token: string | null = null;
+  if (raw) {
+    try { token = JSON.parse(raw); } catch { token = raw; }
+  }
   if (token) {
     req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
   }

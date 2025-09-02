@@ -8,7 +8,11 @@ export class LiveService {
   constructor(){
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/live', {
-        accessTokenFactory: () => localStorage.getItem('token') ?? ''
+        accessTokenFactory: () => {
+          const raw = localStorage.getItem('token');
+          if (!raw) return '';
+          try { return JSON.parse(raw); } catch { return raw; }
+        }
       })
       .withAutomaticReconnect()
       .build();

@@ -1,0 +1,9 @@
+{
+  "GlobalAdmin": "GlobalAdmin",
+  "VoteAdmin": "VoteAdmin",
+  "Functional": "Functional",
+  "ElectionRegistrar": "ElectionRegistrar",
+  "AttendanceRegistrar": "AttendanceRegistrar",
+  "VoteRegistrar": "VoteRegistrar",
+  "ElectionObserver": "ElectionObserver"
+}

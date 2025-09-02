@@ -2,13 +2,26 @@
 {
     public static class AppRoles
     {
-        public const string GlobalAdmin = "GlobalAdmin";
-        public const string VoteAdmin   = "VoteAdmin";
-        public const string Functional  = "Functional";
-        public const string ElectionRegistrar = "ElectionRegistrar";
-        public const string AttendanceRegistrar = "AttendanceRegistrar";
-        public const string VoteRegistrar = "VoteRegistrar";
-        public const string ElectionObserver  = "ElectionObserver";
+        private static readonly Dictionary<string, string> _roles;
+
+        static AppRoles()
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "roles.json");
+            using var stream = File.OpenRead(path);
+            _roles = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!
+                     ?? new Dictionary<string, string>();
+        }
+
+        public static string GlobalAdmin => _roles[nameof(GlobalAdmin)];
+        public static string VoteAdmin   => _roles[nameof(VoteAdmin)];
+        public static string Functional  => _roles[nameof(Functional)];
+        public static string ElectionRegistrar => _roles[nameof(ElectionRegistrar)];
+        public static string AttendanceRegistrar => _roles[nameof(AttendanceRegistrar)];
+        public static string VoteRegistrar => _roles[nameof(VoteRegistrar)];
+        public static string ElectionObserver  => _roles[nameof(ElectionObserver)];
+
+        public static IEnumerable<string> AssignmentRoles =>
+            new[] { AttendanceRegistrar, VoteRegistrar, ElectionObserver };
     }
 
     public class Election

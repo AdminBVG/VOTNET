@@ -14,6 +14,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import * as XLSX from 'xlsx';
 import { Roles, ALLOWED_ASSIGNMENT_ROLES, Role } from '../../core/constants/roles';
+import { firstValueFrom } from 'rxjs';
 
 interface User { id: string; userName: string; email: string; isActive: boolean; }
 
@@ -289,12 +290,12 @@ export class ElectionWizardComponent {
         quorumMinimo: (this.quorum.value || 0) > 1 ? Math.min(1, Math.max(0, (this.quorum.value as number) / 100)) : (this.quorum.value || 0),
         questions: (this.questions.value||[]).map((q:any)=>({ text:q.text, options:q.options }))
       } as any;
-      const created:any = await this.http.post('/api/elections', dto).toPromise();
+      const created:any = await firstValueFrom(this.http.post('/api/elections', dto));
       const id = created.id || created.Id || created?.e?.Id;
       if (!id) throw new Error('No se obtuvo ID');
       if (this.padronFile){
         const fd = new FormData(); fd.append('file', this.padronFile);
-        try { await this.http.post(`/api/elections/${id}/padron`, fd).toPromise(); }
+        try { await firstValueFrom(this.http.post(`/api/elections/${id}/padron`, fd)); }
         catch { this.snack.open('Error al subir padrón','OK',{duration:2500}); }
       }
       for (const a of this.assignments()){
@@ -302,7 +303,12 @@ export class ElectionWizardComponent {
           this.snack.open('Rol de asignación inválido','OK',{duration:3000});
           continue;
         }
-        await this.http.post(`/api/elections/${id}/assignments`, { userId: a.user.id, role: a.role }).toPromise();
+        try {
+          await firstValueFrom(this.http.post(`/api/elections/${id}/assignments`, { userId: a.user.id, role: a.role }));
+        } catch(err:any){
+          const msg = err?.error?.error || 'Error al asignar usuario';
+          this.snack.open(msg,'OK',{duration:3000});
+        }
       }
       this.snack.open('Elección creada','OK',{duration:2000});
       this.router.navigate(['/elections', id]);
