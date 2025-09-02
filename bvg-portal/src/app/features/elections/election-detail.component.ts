@@ -389,7 +389,7 @@ export class ElectionDetailComponent implements AfterViewInit {
     return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === 'ElectionRegistrar');
   }
   get canRegister(){
-    return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole('VoteOperator');
+    return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin') || this.auth.hasRole('ElectionRegistrar');
   }
   get canClose(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
 }

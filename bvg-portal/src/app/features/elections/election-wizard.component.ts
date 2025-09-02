@@ -257,7 +257,7 @@ export class ElectionWizardComponent {
     this.step1.patchValue({ scheduledAt: out.toISOString() });
   }
   applyAttendance(){ const users = this.selectedUsersAttendance.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'ElectionRegistrar'}))]); this.selectedUsersAttendance.setValue([]); }
-  applyVoting(){ const users = this.selectedUsersVoting.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'VoteOperator'}))]); this.selectedUsersVoting.setValue([]); }
+  applyVoting(){ const users = this.selectedUsersVoting.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'ElectionRegistrar'}))]); this.selectedUsersVoting.setValue([]); }
   removeAssignment(i:number){ const copy = [...this.assignments()]; copy.splice(i,1); this.assignments.set(copy); }
 
   async create(){
