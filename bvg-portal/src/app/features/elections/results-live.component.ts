@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { NgFor, NgIf } from '@angular/common';
+import { NgFor, NgIf, DecimalPipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -10,7 +10,7 @@ import { LiveService } from '../../core/live.service';
 @Component({
   selector: 'app-results-live',
   standalone: true,
-  imports: [NgFor, NgIf, MatCardModule, MatFormFieldModule, MatSelectModule, MatTableModule],
+  imports: [NgFor, NgIf, DecimalPipe, MatCardModule, MatFormFieldModule, MatSelectModule, MatTableModule],
   template: `
   <div class="page">
     <h2>Resultados en vivo</h2>
