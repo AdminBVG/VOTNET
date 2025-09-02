@@ -30,7 +30,7 @@ namespace BvgAuthApi.Endpoints
                 );
                 var branding = new BrandingDto(cfg["Branding:LogoUrl"] ?? "");
                 return Results.Ok(new AppConfigDto(storage, smtp, azure, branding));
-            });
+            }).AllowAnonymous();
 
             g.MapPut("/", async ([FromBody] AppConfigDto dto, IWebHostEnvironment env) =>
             {
