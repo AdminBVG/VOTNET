@@ -214,7 +214,7 @@ export class ElectionWizardComponent {
   assignments = signal<{user: User, role: string}[]>([]);
   creating = signal(false);
 
-  functionalRoles = ['ElectionObserver','ElectionRegistrar','ElectionVoter'];
+  functionalRoles = ['ElectionObserver','AttendanceRegistrar','VoteRegistrar','ElectionVoter'];
 
   constructor(){
     this.http.get<User[]>(`/api/users`).subscribe({ next: d => this.users.set(d), error: _=> this.users.set([]) });
@@ -256,8 +256,8 @@ export class ElectionWizardComponent {
     const out = new Date(d); out.setHours(h||0, m||0, 0, 0);
     this.step1.patchValue({ scheduledAt: out.toISOString() });
   }
-  applyAttendance(){ const users = this.selectedUsersAttendance.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'ElectionRegistrar'}))]); this.selectedUsersAttendance.setValue([]); }
-  applyVoting(){ const users = this.selectedUsersVoting.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'ElectionRegistrar'}))]); this.selectedUsersVoting.setValue([]); }
+  applyAttendance(){ const users = this.selectedUsersAttendance.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'AttendanceRegistrar'}))]); this.selectedUsersAttendance.setValue([]); }
+  applyVoting(){ const users = this.selectedUsersVoting.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'VoteRegistrar'}))]); this.selectedUsersVoting.setValue([]); }
   removeAssignment(i:number){ const copy = [...this.assignments()]; copy.splice(i,1); this.assignments.set(copy); }
 
   async create(){

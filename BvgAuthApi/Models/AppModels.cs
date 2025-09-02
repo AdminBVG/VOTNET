@@ -6,6 +6,8 @@
         public const string VoteAdmin   = "VoteAdmin";
         public const string Functional  = "Functional";
         public const string ElectionRegistrar = "ElectionRegistrar";
+        public const string AttendanceRegistrar = "AttendanceRegistrar";
+        public const string VoteRegistrar = "VoteRegistrar";
         public const string ElectionObserver  = "ElectionObserver";
         public const string ElectionVoter     = "ElectionVoter";
     }

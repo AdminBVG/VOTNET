@@ -41,7 +41,7 @@ export class VoteListComponent {
   items = signal<AssignedDto[]>([]);
   constructor(){ this.load(); }
   load(){
-    this.http.get<AssignedDto[]>(`/api/elections/assigned?role=ElectionRegistrar`).subscribe({ next: d=> this.items.set(d||[]), error: _=> this.items.set([]) });
+    this.http.get<AssignedDto[]>(`/api/elections/assigned?role=VoteRegistrar`).subscribe({ next: d=> this.items.set(d||[]), error: _=> this.items.set([]) });
   }
   start(id: string){
     this.http.post(`/api/elections/${id}/start`, {}).subscribe({
