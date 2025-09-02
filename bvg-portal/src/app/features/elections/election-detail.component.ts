@@ -179,8 +179,8 @@ import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
         </div>
       </mat-card>
 
-      <!-- Solo mostrar registro de votos en modo edición -->
-      <mat-card *ngIf="canRegister && editMode()">
+      <!-- Se muestra el registro de votos si el usuario tiene permisos -->
+      <mat-card *ngIf="canRegister">
         <h3>Registrar voto</h3>
         <div class="vote-form">
           <mat-form-field appearance="outline">
