@@ -111,7 +111,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private loadElections(){
     const isAdmin = this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin');
-    const url = isAdmin ? '/api/elections' : '/api/elections/assigned?role=ElectionRegistrar';
+    let url = '/api/elections';
+    if (!isAdmin) {
+      const role = this.auth.roles.find(r => ['ElectionRegistrar','ElectionVoter','ElectionObserver'].includes(r)) || 'ElectionRegistrar';
+      url = `/api/elections/assigned?role=${role}`;
+    }
     this.http.get<any[]>(url).subscribe({
       next: list => {
         const now = new Date();

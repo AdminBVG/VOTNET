@@ -5,7 +5,6 @@
         public const string GlobalAdmin = "GlobalAdmin";
         public const string VoteAdmin   = "VoteAdmin";
         public const string Functional  = "Functional";
-        public const string VoteOperator= "VoteOperator";
         public const string ElectionRegistrar = "ElectionRegistrar";
         public const string ElectionObserver  = "ElectionObserver";
         public const string ElectionVoter     = "ElectionVoter";

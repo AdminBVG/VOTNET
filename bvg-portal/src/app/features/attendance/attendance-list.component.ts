@@ -4,6 +4,7 @@ import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { Router } from '@angular/router';
+import { AuthService } from '../../core/auth.service';
 
 interface AssignedDto { id: string; name: string; scheduledAt: string; isClosed: boolean; }
 
@@ -39,9 +40,13 @@ interface AssignedDto { id: string; name: string; scheduledAt: string; isClosed:
 export class AttendanceListComponent {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private auth = inject(AuthService);
   items = signal<AssignedDto[]>([]);
   constructor(){ this.load(); }
-  load(){ this.http.get<AssignedDto[]>(`/api/elections/assigned?role=ElectionRegistrar`).subscribe({ next: d=> this.items.set(d||[]), error: _=> this.items.set([]) }); }
+  load(){
+    const role = this.auth.roles.find(r => ['ElectionRegistrar','ElectionVoter','ElectionObserver'].includes(r)) || 'ElectionRegistrar';
+    this.http.get<AssignedDto[]>(`/api/elections/assigned?role=${role}`).subscribe({ next: d=> this.items.set(d||[]), error: _=> this.items.set([]) });
+  }
   goReq(id: string){ this.router.navigate(['/attendance', id, 'requirements']); }
   goReg(id: string){ this.router.navigate(['/attendance', id, 'register']); }
 }
