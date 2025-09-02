@@ -269,7 +269,11 @@ export class ElectionDetailComponent implements AfterViewInit {
     this.loadQuorum();
     this.loadElectionInfo();
     this.live.onVoteRegistered(()=> { this.loadResults(); this.loadQuorum(); });
-    this.live.onQuorumUpdated(p => { if (p && p.ElectionId === this.id()) this.quorum.set({ total: p.TotalShares || p.totalShares, present: p.PresentShares || p.presentShares, quorum: p.Quorum || p.quorum }); });
+    this.live.onQuorumUpdated(p => {
+      if (p && p.ElectionId === this.id()) {
+        this.quorum.set({ total: p.TotalShares, present: p.PresentShares, quorum: p.Quorum });
+      }
+    });
     if (this.editMode()) this.prefillEdit();
   }
   ngAfterViewInit(){
