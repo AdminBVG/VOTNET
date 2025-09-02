@@ -70,6 +70,34 @@ namespace BvgAuthApi.Endpoints
                     }).ToListAsync()))
                 .RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
+            g.MapGet("/{id}", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                var election = await db.Elections
+                    .AsNoTracking()
+                    .Include(e => e.Questions).ThenInclude(q => q.Options)
+                    .FirstOrDefaultAsync(e => e.Id == id);
+                if (election is null) return Err("election_not_found", 404);
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin)
+                {
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId &&
+                        (a.Role == AppRoles.AttendanceRegistrar || a.Role == AppRoles.VoteRegistrar || a.Role == AppRoles.ElectionObserver));
+                    if (!hasAssign) return Err("forbidden", 403);
+                }
+                var info = new
+                {
+                    election.Id,
+                    election.Name,
+                    election.Details,
+                    election.ScheduledAt,
+                    election.QuorumMinimo,
+                    Questions = election.Questions.Select(q => new { q.Id, q.Text, Options = q.Options.Select(o => new { o.Id, o.Text }) })
+                };
+                return Results.Ok(info);
+            }).RequireAuthorization();
+
             // List Padron entries for an election
             g.MapGet("/{id}/padron", async (Guid id, BvgDbContext db, ClaimsPrincipal user, IWebHostEnvironment env, IConfiguration cfg) =>
             {
@@ -594,7 +622,8 @@ namespace BvgAuthApi.Endpoints
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin)
                 {
-                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionObserver);
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId &&
+                        (a.Role == AppRoles.ElectionObserver || a.Role == AppRoles.VoteRegistrar || a.Role == AppRoles.AttendanceRegistrar));
                     if (!hasAssign) return Err("forbidden", 403);
                 }
                 var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
