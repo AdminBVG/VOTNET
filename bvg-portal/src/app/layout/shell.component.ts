@@ -26,6 +26,7 @@ import { ConfigService } from '../core/config.service';
       <button mat-menu-item routerLink="/elections" routerLinkActive="active" *ngIf="isAdmin">Historial de elecciones</button>
       <button mat-menu-item routerLink="/elections/live" routerLinkActive="active" *ngIf="isAdmin">Resultados en vivo</button>
       <button mat-menu-item routerLink="/attendance" routerLinkActive="active">Mis asignaciones</button>
+      <button mat-menu-item routerLink="/votes" routerLinkActive="active">Registrar votación</button>
     </mat-menu>
     <a mat-button routerLink="/users" *ngIf="isGlobalAdmin">Usuarios</a>
     <a mat-button routerLink="/config" *ngIf="isGlobalAdmin">Configuración</a>

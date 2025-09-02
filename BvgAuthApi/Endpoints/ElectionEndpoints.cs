@@ -303,6 +303,7 @@ namespace BvgAuthApi.Endpoints
                     var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                     var locked = (await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id))?.AttendanceClosed == true;
                     await hub.Clients.All.SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = locked, QuorumMin = election.QuorumMinimo });
+                    await hub.Clients.All.SendAsync("quorumUpdated", new { ElectionId = id, TotalShares = totalShares, PresentShares = presentShares, Quorum = totalShares == 0 ? 0 : presentShares / totalShares });
                 }
                 return Results.Ok();
             }).RequireAuthorization().DisableAntiforgery();
@@ -440,6 +441,33 @@ namespace BvgAuthApi.Endpoints
                 return Results.Ok(logs);
             }).RequireAuthorization();
 
+            // Start election and return first question with present padron
+            g.MapPost("/{id}/start", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                var election = await db.Elections
+                    .Include(e => e.Questions).ThenInclude(q => q.Options)
+                    .Include(e => e.Padron)
+                    .FirstOrDefaultAsync(e => e.Id == id);
+                if (election is null) return Err("election_not_found", 404);
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin)
+                {
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionRegistrar);
+                    if (!hasAssign) return Err("forbidden", 403);
+                }
+                var firstQ = election.Questions
+                    .OrderBy(q => q.Id)
+                    .Select(q => new { q.Id, q.Text, Options = q.Options.Select(o => new { o.Id, o.Text }) })
+                    .FirstOrDefault();
+                var present = election.Padron
+                    .Where(p => p.Attendance != AttendanceType.None)
+                    .Select(p => new { p.Id, p.ShareholderName, p.Shares })
+                    .ToList();
+                return Results.Ok(new { Question = firstQ, Padron = present });
+            }).RequireAuthorization().DisableAntiforgery();
+
             g.MapPost("/{id}/votes", async (Guid id, [FromBody] VoteDto dto, BvgDbContext db, IHubContext<LiveHub> hub, ClaimsPrincipal user) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
@@ -523,6 +551,7 @@ namespace BvgAuthApi.Endpoints
                     var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                     var locked = (await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id))?.AttendanceClosed == true;
                     await hub.Clients.All.SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = locked, QuorumMin = election.QuorumMinimo });
+                    await hub.Clients.All.SendAsync("quorumUpdated", new { ElectionId = id, TotalShares = totalShares, PresentShares = presentShares, Quorum = totalShares == 0 ? 0 : presentShares / totalShares });
                 }
                 return Results.Ok();
             }).RequireAuthorization().DisableAntiforgery();
@@ -555,7 +584,11 @@ namespace BvgAuthApi.Endpoints
             g.MapGet("/{id}/results", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
             {
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
-                var election = await db.Elections.Include(e => e.Questions).ThenInclude(q => q.Options).Include(e => e.Votes).FirstOrDefaultAsync(e => e.Id == id);
+                var election = await db.Elections
+                    .Include(e => e.Questions).ThenInclude(q => q.Options)
+                    .Include(e => e.Votes)
+                    .Include(e => e.Padron)
+                    .FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
                 var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
@@ -564,13 +597,15 @@ namespace BvgAuthApi.Endpoints
                     var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.ElectionObserver);
                     if (!hasAssign) return Err("forbidden", 403);
                 }
+                var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                 var results = election.Questions.Select(q => new {
                     QuestionId = q.Id,
                     q.Text,
-                    Options = q.Options.Select(o => new {
-                        OptionId = o.Id,
-                        o.Text,
-                        Votes = election.Votes.Count(v => v.ElectionQuestionId == q.Id && v.ElectionOptionId == o.Id)
+                    Options = q.Options.Select(o => {
+                        var votes = election.Votes.Where(v => v.ElectionQuestionId == q.Id && v.ElectionOptionId == o.Id);
+                        var shares = (from v in votes join p in election.Padron on v.PadronEntryId equals p.Id select p.Shares).Sum();
+                        var pct = presentShares == 0 ? 0 : shares / presentShares;
+                        return new { OptionId = o.Id, o.Text, Votes = votes.Count(), Percent = pct };
                     })
                 });
                 return Results.Ok(results);

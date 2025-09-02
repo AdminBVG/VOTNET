@@ -50,6 +50,10 @@ import { MatDividerModule } from '@angular/material/divider';
           <mat-label>Client ID</mat-label>
           <input matInput formControlName="clientId">
         </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Client Secret</mat-label>
+          <input matInput formControlName="clientSecret">
+        </mat-form-field>
         <mat-divider></mat-divider>
         <h3>Branding</h3>
         <mat-form-field appearance="outline" class="logo-field">
@@ -80,7 +84,7 @@ export class AdminConfigComponent{
   form = this.fb.group({
     storageRoot: ['', Validators.required],
     host: [''], port: [25], user: [''], from: [''],
-    tenantId: [''], clientId: [''],
+    tenantId: [''], clientId: [''], clientSecret: [''],
     logoUrl: ['']
   });
   constructor(){ this.load(); }
@@ -93,9 +97,10 @@ export class AdminConfigComponent{
       from: cfg.smtp?.from || '',
       tenantId: cfg.azureAd?.tenantId || '',
       clientId: cfg.azureAd?.clientId || '',
+      clientSecret: cfg.azureAd?.clientSecret || '',
       logoUrl: cfg.branding?.logoUrl || ''
     });
   }); }
-  save(){ const v = this.form.value as any; const dto = { storageRoot: v.storageRoot, smtp: { host: v.host, port: v.port, user: v.user, from: v.from }, azureAd: { tenantId: v.tenantId, clientId: v.clientId }, branding: { logoUrl: v.logoUrl } }; this.http.put(`/api/config/`, dto).subscribe({ next: _=> this.snack.open('Guardado','OK',{duration:1500}), error: _=> this.snack.open('Error al guardar','OK',{duration:2000}) }); }
+  save(){ const v = this.form.value as any; const dto = { storageRoot: v.storageRoot, smtp: { host: v.host, port: v.port, user: v.user, from: v.from }, azureAd: { tenantId: v.tenantId, clientId: v.clientId, clientSecret: v.clientSecret }, branding: { logoUrl: v.logoUrl } }; this.http.put(`/api/config/`, dto).subscribe({ next: _=> this.snack.open('Guardado','OK',{duration:1500}), error: _=> this.snack.open('Error al guardar','OK',{duration:2000}) }); }
 }
 

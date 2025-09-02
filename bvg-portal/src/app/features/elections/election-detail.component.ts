@@ -15,6 +15,7 @@ import { LiveService } from '../../core/live.service';
 import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
@@ -25,7 +26,7 @@ import { AuthService } from '../../core/auth.service';
 @Component({
   selector: 'app-election-detail',
   standalone: true,
-  imports: [NgFor, NgIf, DecimalPipe, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule],
+  imports: [NgFor, NgIf, DecimalPipe, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, MatProgressBarModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule],
   template: `
   <div class="page">
     <h2>Elección {{id()}}</h2>
@@ -69,7 +70,10 @@ import { AuthService } from '../../core/auth.service';
       </mat-card>
       <mat-card *ngIf="!editMode()">
         <h3>Quórum</h3>
-        <div *ngIf="quorum() as q">Total: {{q.total}} | Presentes: {{q.present}} | %: {{(q.quorum*100) | number:'1.0-2'}}%</div>
+        <div *ngIf="quorum() as q">
+          Total: {{q.total}} | Presentes: {{q.present}} | %: {{(q.quorum*100) | number:'1.0-2'}}%
+          <mat-progress-bar mode="determinate" [value]="q.quorum*100"></mat-progress-bar>
+        </div>
       </mat-card>
 
       <!-- Solo mostrar en modo edición -->
@@ -164,6 +168,10 @@ import { AuthService } from '../../core/auth.service';
               <th mat-header-cell *matHeaderCellDef>Votos</th>
               <td mat-cell *matCellDef="let o">{{o.votes}}</td>
             </ng-container>
+            <ng-container matColumnDef="percent">
+              <th mat-header-cell *matHeaderCellDef>%</th>
+              <td mat-cell *matCellDef="let o">{{ (o.percent || o.Percent)*100 | number:'1.0-2' }}%</td>
+            </ng-container>
             <tr mat-header-row *matHeaderRowDef="resCols"></tr>
             <tr mat-row *matRowDef="let row; columns: resCols;"></tr>
           </table>
@@ -236,7 +244,7 @@ export class ElectionDetailComponent implements AfterViewInit {
   }
   assignments = signal<any[]>([]);
   assignCols = ['userId','role','action'];
-  resCols = ['text','votes'];
+  resCols = ['text','votes','percent'];
   results = signal<any[]>([]);
   quorum = signal<{total:number,present:number,quorum:number}|null>(null);
   electionInfo = signal<any|null>(null);
@@ -261,6 +269,7 @@ export class ElectionDetailComponent implements AfterViewInit {
     this.loadQuorum();
     this.loadElectionInfo();
     this.live.onVoteRegistered(()=> { this.loadResults(); this.loadQuorum(); });
+    this.live.onQuorumUpdated(p => { if (p && p.ElectionId === this.id()) this.quorum.set({ total: p.TotalShares || p.totalShares, present: p.PresentShares || p.presentShares, quorum: p.Quorum || p.quorum }); });
     if (this.editMode()) this.prefillEdit();
   }
   ngAfterViewInit(){

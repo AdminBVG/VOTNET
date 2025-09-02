@@ -33,6 +33,10 @@ import { LiveService } from '../../core/live.service';
             <th mat-header-cell *matHeaderCellDef>Votos</th>
             <td mat-cell *matCellDef="let o">{{o.votes}}</td>
           </ng-container>
+          <ng-container matColumnDef="percent">
+            <th mat-header-cell *matHeaderCellDef>%</th>
+            <td mat-cell *matCellDef="let o">{{ (o.percent || o.Percent)*100 | number:'1.0-2' }}%</td>
+          </ng-container>
           <tr mat-header-row *matHeaderRowDef="resCols"></tr>
           <tr mat-row *matRowDef="let row; columns: resCols;"></tr>
         </table>
@@ -51,7 +55,7 @@ export class ResultsLiveComponent {
   elections = signal<any[]>([]);
   selectedId: string | null = null;
   results = signal<any[]>([]);
-  resCols = ['text','votes'];
+  resCols = ['text','votes','percent'];
 
   constructor(){
     this.http.get<any[]>(`/api/elections`).subscribe({ next: d => this.elections.set(d) });

@@ -42,6 +42,7 @@ try
         {
             if (azure.TryGetProperty("TenantId", out var t)) builder.Configuration["AzureAd:TenantId"] = t.GetString();
             if (azure.TryGetProperty("ClientId", out var c)) builder.Configuration["AzureAd:ClientId"] = c.GetString();
+            if (azure.TryGetProperty("ClientSecret", out var s)) builder.Configuration["AzureAd:ClientSecret"] = s.GetString();
         }
         if (doc.RootElement.TryGetProperty("Branding", out var branding))
         {
@@ -70,6 +71,8 @@ builder.Configuration["AzureAd:TenantId"] =
     Environment.GetEnvironmentVariable("AZURE_AD_TENANT_ID") ?? builder.Configuration["AzureAd:TenantId"];
 builder.Configuration["AzureAd:ClientId"] =
     Environment.GetEnvironmentVariable("AZURE_AD_CLIENT_ID") ?? builder.Configuration["AzureAd:ClientId"];
+builder.Configuration["AzureAd:ClientSecret"] =
+    Environment.GetEnvironmentVariable("AZURE_AD_CLIENT_SECRET") ?? builder.Configuration["AzureAd:ClientSecret"];
 builder.Configuration["Branding:LogoUrl"] =
     Environment.GetEnvironmentVariable("BRANDING_LOGO_URL") ?? builder.Configuration["Branding:LogoUrl"];
 
