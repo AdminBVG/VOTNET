@@ -6,21 +6,23 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-admin-config',
   standalone: true,
-  imports: [ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule],
+  imports: [ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule, MatDividerModule],
   template: `
   <div class="page">
     <h2>Configuración</h2>
     <mat-card>
-      <h3>Storage</h3>
       <form [formGroup]="form" (ngSubmit)="save()" class="cfg-form">
+        <h3>Storage</h3>
         <mat-form-field appearance="outline">
           <mat-label>Storage Root</mat-label>
           <input matInput formControlName="storageRoot" placeholder="C:\\BVG\\uploads">
         </mat-form-field>
+        <mat-divider></mat-divider>
         <h3>SMTP</h3>
         <mat-form-field appearance="outline">
           <mat-label>Host</mat-label>
@@ -38,6 +40,22 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
           <mat-label>Remitente (From)</mat-label>
           <input matInput formControlName="from">
         </mat-form-field>
+        <mat-divider></mat-divider>
+        <h3>Azure AD</h3>
+        <mat-form-field appearance="outline">
+          <mat-label>Tenant ID</mat-label>
+          <input matInput formControlName="tenantId">
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Client ID</mat-label>
+          <input matInput formControlName="clientId">
+        </mat-form-field>
+        <mat-divider></mat-divider>
+        <h3>Branding</h3>
+        <mat-form-field appearance="outline" class="logo-field">
+          <mat-label>Logo URL</mat-label>
+          <input matInput formControlName="logoUrl">
+        </mat-form-field>
         <div class="actions">
           <button mat-raised-button color="primary" [disabled]="form.invalid">Guardar</button>
         </div>
@@ -48,8 +66,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
   `,
   styles: [`
     .page{ padding:16px }
-    .cfg-form{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px }
-    .actions{ grid-column: 1 / -1; justify-self:end }
+    .cfg-form{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px; align-items:flex-start }
+    h3{ grid-column:1 / -1; margin-top:8px }
+    mat-divider{ grid-column:1 / -1 }
+    .actions{ grid-column: 1 / -1; justify-self:end; margin-top:12px }
     .note{ margin-top:8px; opacity:.75; font-size:13px }
   `]
 })
@@ -59,7 +79,9 @@ export class AdminConfigComponent{
   private snack = inject(MatSnackBar);
   form = this.fb.group({
     storageRoot: ['', Validators.required],
-    host: [''], port: [25], user: [''], from: ['']
+    host: [''], port: [25], user: [''], from: [''],
+    tenantId: [''], clientId: [''],
+    logoUrl: ['']
   });
   constructor(){ this.load(); }
   load(){ this.http.get<any>(`/api/config/`).subscribe(cfg=>{
@@ -68,9 +90,12 @@ export class AdminConfigComponent{
       host: cfg.smtp?.host || '',
       port: cfg.smtp?.port || 25,
       user: cfg.smtp?.user || '',
-      from: cfg.smtp?.from || ''
+      from: cfg.smtp?.from || '',
+      tenantId: cfg.azureAd?.tenantId || '',
+      clientId: cfg.azureAd?.clientId || '',
+      logoUrl: cfg.branding?.logoUrl || ''
     });
   }); }
-  save(){ const v = this.form.value as any; const dto = { storageRoot: v.storageRoot, smtp: { host: v.host, port: v.port, user: v.user, from: v.from } }; this.http.put(`/api/config/`, dto).subscribe({ next: _=> this.snack.open('Guardado','OK',{duration:1500}), error: _=> this.snack.open('Error al guardar','OK',{duration:2000}) }); }
+  save(){ const v = this.form.value as any; const dto = { storageRoot: v.storageRoot, smtp: { host: v.host, port: v.port, user: v.user, from: v.from }, azureAd: { tenantId: v.tenantId, clientId: v.clientId }, branding: { logoUrl: v.logoUrl } }; this.http.put(`/api/config/`, dto).subscribe({ next: _=> this.snack.open('Guardado','OK',{duration:1500}), error: _=> this.snack.open('Error al guardar','OK',{duration:2000}) }); }
 }
 

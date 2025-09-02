@@ -7,6 +7,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { NgIf } from '@angular/common';
 import { AuthService } from '../core/auth.service';
 import { ThemeService } from '../core/theme.service';
+import { ConfigService } from '../core/config.service';
 
 @Component({
   selector: 'app-shell',
@@ -15,7 +16,7 @@ import { ThemeService } from '../core/theme.service';
   template: `
   <mat-toolbar>
     <a routerLink="/dashboard" class="brand-link" aria-label="Ir al inicio">
-      <img src="assets/bvg-logo.png" alt="BVG" height="36"/>
+      <img [src]="cfg.logoUrl()" alt="Logo" height="36"/>
     </a>
     <span class="spacer"></span>
     <a mat-button routerLink="/dashboard" routerLinkActive="active">Inicio</a>
@@ -77,6 +78,7 @@ import { ThemeService } from '../core/theme.service';
 export class ShellComponent {
   private auth = inject(AuthService);
   private themeSvc = inject(ThemeService);
+  cfg = inject(ConfigService);
   logout(){ this.auth.logout(); }
   year = new Date().getFullYear();
   get isGlobalAdmin(){ return this.auth.hasRole('GlobalAdmin'); }

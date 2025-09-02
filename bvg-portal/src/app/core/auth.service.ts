@@ -1,6 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { PublicClientApplication } from '@azure/msal-browser';
+import { from, switchMap } from 'rxjs';
+import { environment } from '../../environments';
+import { ConfigService } from './config.service';
 
 export interface LoginDto { userName: string; password: string; }
 
@@ -8,6 +12,8 @@ export interface LoginDto { userName: string; password: string; }
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private cfg = inject(ConfigService);
+  private msal: PublicClientApplication | null = null;
 
   get token(): string | null { return localStorage.getItem('token'); }
   get isAuthenticated(): boolean { return !!this.token; }
@@ -27,6 +33,21 @@ export class AuthService {
 
   login(dto: LoginDto) {
     return this.http.post<{ token: string }>(`/api/auth/login`, dto);
+  }
+
+  loginWithMicrosoft() {
+    if (!this.msal) {
+      this.msal = new PublicClientApplication({
+        auth: {
+          clientId: this.cfg.azureClientId(),
+          authority: `https://login.microsoftonline.com/${this.cfg.azureTenantId()}`,
+          redirectUri: environment.azureRedirectUri
+        }
+      });
+    }
+    return from(this.msal.loginPopup({ scopes: ['openid', 'profile', 'email'] })).pipe(
+      switchMap(r => this.http.post<{ token: string }>(`/api/auth/login/m365`, { idToken: r.idToken }))
+    );
   }
 
   setToken(token: string) { localStorage.setItem('token', token); }

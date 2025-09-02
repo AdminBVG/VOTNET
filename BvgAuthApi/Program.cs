@@ -38,6 +38,15 @@ try
             if (smtp.TryGetProperty("User", out var user)) builder.Configuration["Smtp:User"] = user.GetString();
             if (smtp.TryGetProperty("From", out var from)) builder.Configuration["Smtp:From"] = from.GetString();
         }
+        if (doc.RootElement.TryGetProperty("AzureAd", out var azure))
+        {
+            if (azure.TryGetProperty("TenantId", out var t)) builder.Configuration["AzureAd:TenantId"] = t.GetString();
+            if (azure.TryGetProperty("ClientId", out var c)) builder.Configuration["AzureAd:ClientId"] = c.GetString();
+        }
+        if (doc.RootElement.TryGetProperty("Branding", out var branding))
+        {
+            if (branding.TryGetProperty("LogoUrl", out var logo)) builder.Configuration["Branding:LogoUrl"] = logo.GetString();
+        }
         Console.WriteLine("[BOOT] Loaded admin config from data/appconfig.json");
     }
 }
@@ -57,6 +66,12 @@ builder.Configuration["Seed:AdminPassword"] =
     Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? builder.Configuration["Seed:AdminPassword"];
 builder.Configuration["Seed:ResetPassword"] =
     Environment.GetEnvironmentVariable("ADMIN_RESET") ?? builder.Configuration["Seed:ResetPassword"];
+builder.Configuration["AzureAd:TenantId"] =
+    Environment.GetEnvironmentVariable("AZURE_AD_TENANT_ID") ?? builder.Configuration["AzureAd:TenantId"];
+builder.Configuration["AzureAd:ClientId"] =
+    Environment.GetEnvironmentVariable("AZURE_AD_CLIENT_ID") ?? builder.Configuration["AzureAd:ClientId"];
+builder.Configuration["Branding:LogoUrl"] =
+    Environment.GetEnvironmentVariable("BRANDING_LOGO_URL") ?? builder.Configuration["Branding:LogoUrl"];
 
 // DbContext
 builder.Services.AddDbContext<BvgDbContext>(opt =>
@@ -112,6 +127,8 @@ builder.Services.AddAuthorization(opt =>
 
 builder.Services.AddSignalR();
 builder.Services.AddScoped<JwtService>();
+builder.Services.Configure<AzureAdOptions>(builder.Configuration.GetSection("AzureAd"));
+builder.Services.AddSingleton<MicrosoftTokenValidator>();
 
 // CORS
 builder.Services.AddCors(o =>

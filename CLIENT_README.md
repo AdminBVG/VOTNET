@@ -1,16 +1,28 @@
-# VotNET Frontend
+# Bvg Portal
 
 ## Requisitos
 
 - Node.js 20+
-- Angular CLI 17
+- Angular CLI 18
 
 ## Instalación
 
 ```bash
-cd votnet-client
+cd bvg-portal
 npm install
 ```
+
+## Configuración de Microsoft 365
+
+Antes de iniciar la aplicación establece las siguientes variables de entorno con los valores de tu registro en Azure AD:
+
+```bash
+export NG_APP_AZURE_AD_CLIENT_ID="<client-id>"
+export NG_APP_AZURE_AD_TENANT_ID="<tenant-id>"
+export NG_APP_AZURE_AD_REDIRECT_URI="http://localhost:4200"
+```
+
+El logo mostrado en el portal y en el formulario de acceso puede personalizarse desde la sección de **Configuración** dentro de la aplicación, estableciendo un enlace en el campo *Logo URL*.
 
 ## Desarrollo
 
@@ -18,25 +30,4 @@ npm install
 npm start
 ```
 
-La aplicación se servirá en `http://localhost:4200` y consumirá el backend a través de `API_BASE_URL` definido en `src/environments`.
-
-## Estructura del proyecto
-
-- `src/app/login`: componentes de autenticación.
-- `src/app/user-admin`: módulo para administración de usuarios.
-- `src/app/elections`: módulo para gestión de elecciones y resultados.
-- `src/app/services`: servicios compartidos.
-
-## Estilos
-
-Se utilizan temas de Angular Material con estilos globales en `src/styles.css`.
-
-## Despliegue
-
-Construir la aplicación con:
-
-```bash
-npm run build
-```
-
-El contenido generado en `dist/` puede desplegarse como archivos estáticos. Asegúrate de configurar CORS y la variable `API_BASE_URL` en el backend según el entorno.
+La aplicación se servirá en `http://localhost:4200` y se comunicará con el backend a través de rutas relativas (`/api`).

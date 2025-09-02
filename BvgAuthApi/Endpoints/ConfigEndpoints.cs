@@ -5,12 +5,14 @@ namespace BvgAuthApi.Endpoints
 {
     public static class ConfigEndpoints
     {
-        private record AppConfigDto(string StorageRoot, SmtpDto Smtp);
+        private record AppConfigDto(string StorageRoot, SmtpDto Smtp, AzureAdDto AzureAd, BrandingDto Branding);
         private record SmtpDto(string Host, int Port, string User, string From);
+        private record AzureAdDto(string TenantId, string ClientId);
+        private record BrandingDto(string LogoUrl);
 
         public static IEndpointRouteBuilder MapConfig(this IEndpointRouteBuilder app)
         {
-            var g = app.MapGroup("/api/config").RequireAuthorization("GlobalAdmin");
+            var g = app.MapGroup("/api/config");
 
             g.MapGet("/", (IConfiguration cfg) =>
             {
@@ -21,7 +23,12 @@ namespace BvgAuthApi.Endpoints
                     cfg["Smtp:User"] ?? "",
                     cfg["Smtp:From"] ?? ""
                 );
-                return Results.Ok(new AppConfigDto(storage, smtp));
+                var azure = new AzureAdDto(
+                    cfg["AzureAd:TenantId"] ?? "",
+                    cfg["AzureAd:ClientId"] ?? ""
+                );
+                var branding = new BrandingDto(cfg["Branding:LogoUrl"] ?? "");
+                return Results.Ok(new AppConfigDto(storage, smtp, azure, branding));
             });
 
             g.MapPut("/", async ([FromBody] AppConfigDto dto, IWebHostEnvironment env) =>
@@ -32,7 +39,7 @@ namespace BvgAuthApi.Endpoints
                 var json = System.Text.Json.JsonSerializer.Serialize(dto, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
                 await File.WriteAllTextAsync(file, json);
                 return Results.Ok(new { saved = true, file });
-            });
+            }).RequireAuthorization("GlobalAdmin");
 
             return app;
         }
