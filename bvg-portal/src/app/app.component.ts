@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ConfigService } from './core/config.service';
 
 @Component({
   selector: 'app-root',
@@ -9,5 +10,7 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.component.css'
 })
 export class AppComponent {
+  private cfg = inject(ConfigService);
   title = 'bvg-portal';
+  constructor(){ this.cfg.load(); }
 }

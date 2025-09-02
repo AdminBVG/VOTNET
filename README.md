@@ -12,6 +12,9 @@ variables or a secrets manager:
 | `${JWT_KEY}` | `JWT_KEY` |
 | `${ADMIN_EMAIL}` | `ADMIN_EMAIL` |
 | `${ADMIN_PASSWORD}` | `ADMIN_PASSWORD` |
+| `${AZURE_AD_TENANT_ID}` | `AZURE_AD_TENANT_ID` |
+| `${AZURE_AD_CLIENT_ID}` | `AZURE_AD_CLIENT_ID` |
+| _none_ (Logo URL) | `BRANDING_LOGO_URL` optional |
 
 Example configuration on Linux or macOS:
 

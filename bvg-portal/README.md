@@ -6,6 +6,16 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 
 Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
 
+### Microsoft 365 sign‑in
+
+Before starting the dev server set the following environment variables with your Azure AD app values:
+
+```
+export NG_APP_AZURE_AD_CLIENT_ID="<client-id>"
+export NG_APP_AZURE_AD_TENANT_ID="<tenant-id>"
+export NG_APP_AZURE_AD_REDIRECT_URI="http://localhost:4200"
+```
+
 ## Code scaffolding
 
 Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
