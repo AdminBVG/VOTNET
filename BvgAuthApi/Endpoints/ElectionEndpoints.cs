@@ -144,7 +144,7 @@ namespace BvgAuthApi.Endpoints
                 var election = await db.Elections.FindAsync(id);
                 if (election is null) return Results.NotFound();
                 // Allow only per-election roles
-                var allowed = new[] { AppRoles.AttendanceRegistrar, AppRoles.VoteRegistrar, AppRoles.ElectionObserver, AppRoles.ElectionVoter };
+                var allowed = new[] { AppRoles.AttendanceRegistrar, AppRoles.VoteRegistrar, AppRoles.ElectionObserver };
                 if (!allowed.Contains(dto.Role))
                     return Results.Json(new { error = "invalid_assignment_role" }, statusCode: 400);
                 db.ElectionUserAssignments.Add(new ElectionUserAssignment

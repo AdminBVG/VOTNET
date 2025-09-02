@@ -4,6 +4,7 @@ import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { Router } from '@angular/router';
+import { Roles } from '../../core/constants/roles';
 
 interface AssignedDto { id: string; name: string; scheduledAt: string; isClosed: boolean; }
 
@@ -41,7 +42,7 @@ export class VoteListComponent {
   items = signal<AssignedDto[]>([]);
   constructor(){ this.load(); }
   load(){
-    this.http.get<AssignedDto[]>(`/api/elections/assigned?role=VoteRegistrar`).subscribe({ next: d=> this.items.set(d||[]), error: _=> this.items.set([]) });
+    this.http.get<AssignedDto[]>(`/api/elections/assigned?role=${Roles.VoteRegistrar}`).subscribe({ next: d=> this.items.set(d||[]), error: _=> this.items.set([]) });
   }
   start(id: string){
     this.http.post(`/api/elections/${id}/start`, {}).subscribe({

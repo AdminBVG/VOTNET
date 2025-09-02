@@ -9,7 +9,6 @@
         public const string AttendanceRegistrar = "AttendanceRegistrar";
         public const string VoteRegistrar = "VoteRegistrar";
         public const string ElectionObserver  = "ElectionObserver";
-        public const string ElectionVoter     = "ElectionVoter";
     }
 
     public class Election

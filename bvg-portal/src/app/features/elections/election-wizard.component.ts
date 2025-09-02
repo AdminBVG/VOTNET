@@ -13,6 +13,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import * as XLSX from 'xlsx';
+import { Roles, ALLOWED_ASSIGNMENT_ROLES, Role } from '../../core/constants/roles';
 
 interface User { id: string; userName: string; email: string; isActive: boolean; }
 
@@ -211,10 +212,10 @@ export class ElectionWizardComponent {
   users = signal<User[]>([]);
   selectedUsersAttendance = this.fb.control<User[]>([]);
   selectedUsersVoting = this.fb.control<User[]>([]);
-  assignments = signal<{user: User, role: string}[]>([]);
+  assignments = signal<{user: User, role: Role}[]>([]);
   creating = signal(false);
 
-  functionalRoles = ['ElectionObserver','AttendanceRegistrar','VoteRegistrar','ElectionVoter'];
+  functionalRoles = ALLOWED_ASSIGNMENT_ROLES;
 
   constructor(){
     this.http.get<User[]>(`/api/users`).subscribe({ next: d => this.users.set(d), error: _=> this.users.set([]) });
@@ -256,8 +257,24 @@ export class ElectionWizardComponent {
     const out = new Date(d); out.setHours(h||0, m||0, 0, 0);
     this.step1.patchValue({ scheduledAt: out.toISOString() });
   }
-  applyAttendance(){ const users = this.selectedUsersAttendance.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'AttendanceRegistrar'}))]); this.selectedUsersAttendance.setValue([]); }
-  applyVoting(){ const users = this.selectedUsersVoting.value || []; if (!users.length) return; this.assignments.set([...this.assignments(), ...users.map(u=>({user:u, role:'VoteRegistrar'}))]); this.selectedUsersVoting.setValue([]); }
+  applyAttendance(){
+    const users = this.selectedUsersAttendance.value || [];
+    if (!users.length) return;
+    this.assignments.set([
+      ...this.assignments(),
+      ...users.map(u=>({user:u, role: Roles.AttendanceRegistrar}))
+    ]);
+    this.selectedUsersAttendance.setValue([]);
+  }
+  applyVoting(){
+    const users = this.selectedUsersVoting.value || [];
+    if (!users.length) return;
+    this.assignments.set([
+      ...this.assignments(),
+      ...users.map(u=>({user:u, role: Roles.VoteRegistrar}))
+    ]);
+    this.selectedUsersVoting.setValue([]);
+  }
   removeAssignment(i:number){ const copy = [...this.assignments()]; copy.splice(i,1); this.assignments.set(copy); }
 
   async create(){
@@ -281,6 +298,10 @@ export class ElectionWizardComponent {
         catch { this.snack.open('Error al subir padrón','OK',{duration:2500}); }
       }
       for (const a of this.assignments()){
+        if (!ALLOWED_ASSIGNMENT_ROLES.includes(a.role)) {
+          this.snack.open('Rol de asignación inválido','OK',{duration:3000});
+          continue;
+        }
         await this.http.post(`/api/elections/${id}/assignments`, { userId: a.user.id, role: a.role }).toPromise();
       }
       this.snack.open('Elección creada','OK',{duration:2000});
