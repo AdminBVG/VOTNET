@@ -261,18 +261,20 @@ export class ElectionWizardComponent {
   applyAttendance(){
     const users = this.selectedUsersAttendance.value || [];
     if (!users.length) return;
+    const toAdd: {user: User, role: Role}[] = users.map(u => ({ user: u, role: 'AttendanceRegistrar' }));
     this.assignments.set([
       ...this.assignments(),
-      ...users.map(u=>({user:u, role: 'AttendanceRegistrar'}))
+      ...toAdd
     ]);
     this.selectedUsersAttendance.setValue([]);
   }
   applyVoting(){
     const users = this.selectedUsersVoting.value || [];
     if (!users.length) return;
+    const toAdd: {user: User, role: Role}[] = users.map(u => ({ user: u, role: 'VoteRegistrar' }));
     this.assignments.set([
       ...this.assignments(),
-      ...users.map(u=>({user:u, role: 'VoteRegistrar'}))
+      ...toAdd
     ]);
     this.selectedUsersVoting.setValue([]);
   }
