@@ -314,11 +314,17 @@ export class ElectionDetailComponent implements AfterViewInit {
   }
 
   loadResults(){
-    this.http.get<any[]>(`/api/elections/${this.id()}/results`).subscribe({ next: d=> this.results.set(d as any[]), error: _=> this.results.set([]) });
+    this.http.get<any[]>(`/api/elections/${this.id()}/results`).subscribe({
+      next: d => this.results.set(d as any[]),
+      error: err => {
+        this.results.set([]);
+        if (err.status === 403) this.snack.open('No autorizado para ver resultados','OK',{duration:2500});
+      }
+    });
   }
   loadElectionInfo(){
-    this.http.get<any[]>(`/api/elections`).subscribe({
-      next: (list:any[]) => { const e = (list||[]).find((x:any)=> (x.id ?? x.Id) === this.id()); this.electionInfo.set(e || null); },
+    this.http.get<any>(`/api/elections/${this.id()}`).subscribe({
+      next: e => this.electionInfo.set(e || null),
       error: _ => this.electionInfo.set(null)
     });
   }
@@ -347,8 +353,7 @@ export class ElectionDetailComponent implements AfterViewInit {
 
   // Edit support methods
   prefillEdit(){
-    this.http.get<any[]>(`/api/elections`).subscribe({ next: (list:any[]) => {
-      const e = (list||[]).find((x:any)=> (x.id ?? x.Id) === this.id());
+    this.http.get<any>(`/api/elections/${this.id()}`).subscribe({ next: (e:any) => {
       if (!e) return;
       this.editForm.patchValue({ name: e.name ?? e.Name, details: e.details ?? e.Details, quorumPct: Math.round(((e.quorumMinimo ?? e.QuorumMinimo) || 0)*100) });
       const dt = new Date(e.scheduledAt ?? e.ScheduledAt);
