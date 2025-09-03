@@ -294,8 +294,11 @@ namespace BvgAuthApi.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
                     b.HasIndex("ElectionId");
+                    b.HasIndex("ElectionOptionId");
+                    b.HasIndex("ElectionQuestionId");
+                    b.HasIndex("PadronEntryId");
+                    b.HasIndex("ElectionId", "PadronEntryId", "ElectionQuestionId").IsUnique();
 
                     b.ToTable("Votes");
                 });
@@ -474,6 +477,24 @@ namespace BvgAuthApi.Migrations
                         .WithMany("Votes")
                         .HasForeignKey("ElectionId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BvgAuthApi.Models.PadronEntry", null)
+                        .WithMany()
+                        .HasForeignKey("PadronEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BvgAuthApi.Models.ElectionQuestion", null)
+                        .WithMany()
+                        .HasForeignKey("ElectionQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BvgAuthApi.Models.ElectionOption", null)
+                        .WithMany()
+                        .HasForeignKey("ElectionOptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

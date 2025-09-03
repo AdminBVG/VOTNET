@@ -1,4 +1,4 @@
-import { Component, inject, signal, AfterViewInit, OnInit } from '@angular/core';
+import { Component, inject, signal, AfterViewInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { NgFor, NgIf, DecimalPipe, DatePipe, NgClass } from '@angular/common';
@@ -25,6 +25,9 @@ import { AuthService } from '../../core/auth.service';
 import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
 import { PadronRow } from '../../shared/utils/padron.utils';
 import { forkJoin } from 'rxjs';
+import { Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables);
 
 @Component({
   selector: 'app-election-detail',
@@ -160,8 +163,9 @@ import { forkJoin } from 'rxjs';
       <mat-card *ngIf="!editMode()">
         <h3>Resultados</h3>
         <div *ngIf="!results().length">Sin datos / permisos.</div>
-        <div *ngFor="let q of results()" class="q">
+        <div *ngFor="let q of results(); let i = index" class="q">
           <h4>{{q.text}}</h4>
+          <div class="chart-container"><canvas id="res-chart-{{i}}"></canvas></div>
           <table mat-table [dataSource]="q.options" class="mat-elevation-z1">
             <ng-container matColumnDef="text">
               <th mat-header-cell *matHeaderCellDef>Opción</th>
@@ -183,7 +187,7 @@ import { forkJoin } from 'rxjs';
     </div>
 
     <!-- Se muestra el registro de votos si el usuario tiene permisos -->
-    <mat-card *ngIf="canRegister">
+    <mat-card *ngIf="canRegister && !(electionInfo()?.isClosed)">
       <h3>Registrar votos</h3>
       <ng-container *ngIf="!showSummary(); else summaryTpl">
         <div class="progress">Pregunta {{currentIndex()+1}} de {{results().length}}</div>
@@ -254,6 +258,7 @@ import { forkJoin } from 'rxjs';
      .override mat-select{background:#fff3cd}
      .summary-option{margin-left:12px}
      .warn{color:#d32f2f;font-size:13px;margin:4px 0}
+     .chart-container{max-width:300px;margin-bottom:8px}
     `]
 })
 export class ElectionDetailComponent implements AfterViewInit {
@@ -289,6 +294,7 @@ export class ElectionDetailComponent implements AfterViewInit {
   showSummary = signal(false);
   globalSelections: Record<string,string> = {};
   voteSelections: Record<string, Record<string,string>> = {};
+  charts: Chart[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -356,7 +362,7 @@ export class ElectionDetailComponent implements AfterViewInit {
 
   loadResults(){
     this.http.get<any[]>(`/api/elections/${this.id()}/results`).subscribe({
-      next: d => { this.results.set(d as any[]); if(d && d.length){ this.currentIndex.set(0); this.showSummary.set(false); } },
+      next: d => { this.results.set(d as any[]); if(d && d.length){ this.currentIndex.set(0); this.showSummary.set(false); } setTimeout(()=>this.renderCharts(),0); },
       error: err => {
         this.results.set([]);
         if (err.status === 403) this.snack.open('No autorizado para ver resultados','OK',{duration:2500});
@@ -436,6 +442,19 @@ export class ElectionDetailComponent implements AfterViewInit {
   nextQuestion(){ if (!this.canGoNext()){ this.snack.open('Faltan votos por registrar','OK',{duration:2500}); return; } if (this.currentIndex() < this.results().length - 1) this.currentIndex.update(i=>i+1); else this.showSummary.set(true); }
   prevQuestion(){ if (this.currentIndex() > 0) this.currentIndex.update(i=>i-1); }
   summaryCount(qId:string, optionId:string){ const map = this.voteSelections[qId] || {}; return Object.values(map).filter(v=>v===optionId).length; }
+  renderCharts(){
+    this.charts.forEach(c=>c.destroy());
+    this.charts = [];
+    this.results().forEach((q:any, idx:number) => {
+      const canvas = document.getElementById(`res-chart-${idx}`) as HTMLCanvasElement | null;
+      if (!canvas) return;
+      const opts = q.options ?? q.Options ?? [];
+      const labels = opts.map((o:any)=>o.text);
+      const data = opts.map((o:any)=>o.votes);
+      const colors = labels.map((_:any,i:number)=>`hsl(${(i*60)%360},70%,70%)`);
+      this.charts.push(new Chart(canvas,{type:'pie', data:{labels, datasets:[{data, backgroundColor:colors}]}}));
+    });
+  }
   submitAll(){
     const votes:any[] = [];
     for (const q of this.results()){
@@ -448,13 +467,14 @@ export class ElectionDetailComponent implements AfterViewInit {
     this.http.post(`/api/elections/${this.id()}/votes/batch`, { votes }).subscribe({
       next: _=> onSuccess(),
       error: err => {
-        if (err.status === 404){
+        if (err.status === 501){
           const calls = votes.map(v => this.http.post(`/api/elections/${this.id()}/votes`, v));
           forkJoin(calls).subscribe({
             next: _=> onSuccess(),
             error: _=> this.snack.open('Error al registrar voto','OK',{duration:2500})
           });
         }
+        else if (err.status === 404) this.snack.open('Elección no encontrada','OK',{duration:2500});
         else if (err.status === 400) this.snack.open('Quórum no alcanzado o elección cerrada','OK',{duration:2500});
         else if (err.status === 403) this.snack.open('No tienes permiso para registrar','OK',{duration:2500});
         else this.snack.open('Error al registrar voto','OK',{duration:2500});
@@ -463,7 +483,7 @@ export class ElectionDetailComponent implements AfterViewInit {
   }
   closeElection(){
     this.http.post(`/api/elections/${this.id()}/close`, {}).subscribe({
-      next: _=> { this.snack.open('Elección cerrada','OK',{duration:2000}); this.loadResults(); },
+      next: _=> { this.snack.open('Elección cerrada','OK',{duration:2000}); this.loadResults(); this.loadElectionInfo(); },
       error: _=> this.snack.open('No autorizado para cerrar','OK',{duration:2500})
     });
   }
@@ -478,6 +498,7 @@ export class ElectionDetailComponent implements AfterViewInit {
     return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === Roles.AttendanceRegistrar);
   }
   get canRegister(){
+    if (this.electionInfo()?.isClosed) return false;
     if (this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin')) return true;
     const me = this.auth.payload?.sub;
     return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === Roles.VoteRegistrar);

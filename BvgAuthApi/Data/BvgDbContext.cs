@@ -56,6 +56,11 @@ namespace BvgAuthApi.Data
             b.Entity<VoteRecord>(v =>
             {
                 v.HasKey(x => x.Id);
+                v.HasIndex(x => new { x.ElectionId, x.PadronEntryId, x.ElectionQuestionId }).IsUnique();
+                v.HasOne<Election>().WithMany(e => e.Votes).HasForeignKey(x => x.ElectionId).OnDelete(DeleteBehavior.Cascade);
+                v.HasOne<PadronEntry>().WithMany().HasForeignKey(x => x.PadronEntryId).OnDelete(DeleteBehavior.Restrict);
+                v.HasOne<ElectionQuestion>().WithMany().HasForeignKey(x => x.ElectionQuestionId).OnDelete(DeleteBehavior.Restrict);
+                v.HasOne<ElectionOption>().WithMany().HasForeignKey(x => x.ElectionOptionId).OnDelete(DeleteBehavior.Restrict);
             });
             b.Entity<AttendanceLog>(l =>
             {

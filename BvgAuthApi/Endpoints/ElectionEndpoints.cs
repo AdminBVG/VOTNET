@@ -8,6 +8,7 @@ using BvgAuthApi.Hubs;
 using BvgAuthApi.Models;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Collections.Generic;
 
 namespace BvgAuthApi.Endpoints
 {
@@ -93,6 +94,7 @@ namespace BvgAuthApi.Endpoints
                     election.Details,
                     election.ScheduledAt,
                     election.QuorumMinimo,
+                    election.IsClosed,
                     Questions = election.Questions.Select(q => new { q.Id, q.Text, Options = q.Options.Select(o => new { o.Id, o.Text }) })
                 };
                 return Results.Ok(info);
@@ -504,23 +506,33 @@ namespace BvgAuthApi.Endpoints
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.VoteRegistrar))
                     return Err("forbidden", 403);
-                var election = await db.Elections.Include(e => e.Padron).Include(e => e.Votes).FirstOrDefaultAsync(e => e.Id == id);
+                var election = await db.Elections
+                    .Include(e => e.Padron)
+                    .Include(e => e.Votes)
+                    .Include(e => e.Questions).ThenInclude(q => q.Options)
+                    .FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
                 if (election.IsClosed) return Err("election_closed", 400);
                 var total = election.Padron.Sum(p => p.Shares);
                 var present = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                 if (total == 0 || present / total < election.QuorumMinimo)
                     return Err("quorum_not_met", 400);
+                var padron = election.Padron.FirstOrDefault(p => p.Id == dto.PadronId);
+                if (padron is null) return Err("padron_not_found", 400);
+                var question = election.Questions.FirstOrDefault(q => q.Id == dto.QuestionId);
+                if (question is null) return Err("question_not_found", 400);
+                if (!question.Options.Any(o => o.Id == dto.OptionId)) return Err("option_not_found", 400);
+                if (election.Votes.Any(v => v.PadronEntryId == dto.PadronId && v.ElectionQuestionId == dto.QuestionId))
+                    return Err("vote_duplicate", 400);
                 var registrarId = userId;
-                var vote = new VoteRecord
+                db.Votes.Add(new VoteRecord
                 {
                     ElectionId = id,
                     PadronEntryId = dto.PadronId,
                     ElectionQuestionId = dto.QuestionId,
                     ElectionOptionId = dto.OptionId,
                     RegistrarId = registrarId
-                };
-                db.Votes.Add(vote);
+                });
                 await db.SaveChangesAsync();
                 await hub.Clients.All.SendAsync("voteRegistered", new { ElectionId = id, QuestionId = dto.QuestionId, OptionId = dto.OptionId });
                 return Results.Ok();
@@ -533,7 +545,11 @@ namespace BvgAuthApi.Endpoints
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.VoteRegistrar))
                     return Err("forbidden", 403);
-                var election = await db.Elections.Include(e => e.Padron).Include(e => e.Votes).FirstOrDefaultAsync(e => e.Id == id);
+                var election = await db.Elections
+                    .Include(e => e.Padron)
+                    .Include(e => e.Votes)
+                    .Include(e => e.Questions).ThenInclude(q => q.Options)
+                    .FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
                 if (election.IsClosed) return Err("election_closed", 400);
                 var total = election.Padron.Sum(p => p.Shares);
@@ -541,8 +557,16 @@ namespace BvgAuthApi.Endpoints
                 if (total == 0 || present / total < election.QuorumMinimo)
                     return Err("quorum_not_met", 400);
                 var registrarId = userId;
+                var existingPairs = new HashSet<(Guid, Guid)>(election.Votes.Select(v => (v.PadronEntryId, v.ElectionQuestionId)));
+                var batchPairs = new HashSet<(Guid, Guid)>();
                 foreach (var v in dto.Votes)
                 {
+                    if (!election.Padron.Any(p => p.Id == v.PadronId)) return Err("padron_not_found", 400);
+                    var q = election.Questions.FirstOrDefault(q => q.Id == v.QuestionId);
+                    if (q is null) return Err("question_not_found", 400);
+                    if (!q.Options.Any(o => o.Id == v.OptionId)) return Err("option_not_found", 400);
+                    var key = (v.PadronId, v.QuestionId);
+                    if (existingPairs.Contains(key) || !batchPairs.Add(key)) return Err("vote_duplicate", 400);
                     db.Votes.Add(new VoteRecord
                     {
                         ElectionId = id,
@@ -659,6 +683,7 @@ namespace BvgAuthApi.Endpoints
                     .Include(e => e.Padron)
                     .FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
+                if (!election.IsClosed) return Err("election_not_closed", 400);
                 var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin)
