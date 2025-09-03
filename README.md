@@ -31,3 +31,9 @@ On Windows PowerShell replace `export` with `$env:VAR = "value"`.
 In production use a secrets manager or deployment environment to supply these
 values securely.
 
+
+## Voting
+
+- Votes are validated to ensure each shareholder can vote only once per question.
+- Results are available only after an election is closed.
+- Frontend hides the vote form for closed elections and displays pie charts for results.

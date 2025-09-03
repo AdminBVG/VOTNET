@@ -6,6 +6,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { LiveService } from '../../core/live.service';
+import { Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables);
 
 @Component({
   selector: 'app-results-live',
@@ -22,8 +25,9 @@ import { LiveService } from '../../core/live.service';
     </mat-form-field>
 
     <div *ngIf="results().length; else empty">
-      <mat-card class="q" *ngFor="let q of results()">
+      <mat-card class="q" *ngFor="let q of results(); let i = index">
         <h3>{{q.text}}</h3>
+        <div class="chart-container"><canvas id="live-chart-{{i}}"></canvas></div>
         <table mat-table [dataSource]="q.options" class="mat-elevation-z1">
           <ng-container matColumnDef="text">
             <th mat-header-cell *matHeaderCellDef>Opción</th>
@@ -47,7 +51,7 @@ import { LiveService } from '../../core/live.service';
     </ng-template>
   </div>
   `,
-  styles: [`.q{margin-bottom:12px}.full{width:100%}`]
+  styles: [`.q{margin-bottom:12px}.full{width:100%}.chart-container{max-width:300px;margin-bottom:8px}`]
 })
 export class ResultsLiveComponent {
   private http = inject(HttpClient);
@@ -56,6 +60,7 @@ export class ResultsLiveComponent {
   selectedId: string | null = null;
   results = signal<any[]>([]);
   resCols = ['text','votes','percent'];
+  charts: Chart[] = [];
 
   constructor(){
     this.http.get<any[]>(`/api/elections`).subscribe({ next: d => this.elections.set(d) });
@@ -64,7 +69,21 @@ export class ResultsLiveComponent {
 
   loadResults(){
     if (!this.selectedId) { this.results.set([]); return; }
-    this.http.get<any[]>(`/api/elections/${this.selectedId}/results`).subscribe({ next: d => this.results.set(d) });
+    this.http.get<any[]>(`/api/elections/${this.selectedId}/results`).subscribe({ next: d => { this.results.set(d); setTimeout(()=>this.renderCharts(),0); } });
+  }
+
+  renderCharts(){
+    this.charts.forEach(c=>c.destroy());
+    this.charts = [];
+    this.results().forEach((q:any, idx:number) => {
+      const canvas = document.getElementById(`live-chart-${idx}`) as HTMLCanvasElement | null;
+      if (!canvas) return;
+      const opts = q.options ?? q.Options ?? [];
+      const labels = opts.map((o:any)=>o.text);
+      const data = opts.map((o:any)=>o.votes);
+      const colors = labels.map((_:any,i:number)=>`hsl(${(i*60)%360},70%,70%)`);
+      this.charts.push(new Chart(canvas,{type:'pie', data:{labels, datasets:[{data, backgroundColor:colors}]}}));
+    });
   }
 }
 
