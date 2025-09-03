@@ -27,6 +27,7 @@ import { FilterPresentPipe } from './filter-present.pipe';
 import { AuthService } from '../../core/auth.service';
 import { VoteConfirmDialogComponent } from './vote-confirm-dialog.component';
 import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
+import { PadronRow } from '../../shared/utils/padron.utils';
 
 @Component({
   selector: 'app-election-detail',
@@ -274,7 +275,7 @@ export class ElectionDetailComponent implements AfterViewInit {
   private editSelTime = signal<string>('09:00');
   padronUploading = signal(false);
   lastPadronFile: string | null = null;
-  padronDS = new MatTableDataSource<any>([]);
+  padronDS = new MatTableDataSource<PadronRow>([]);
   get padronCols() {
     return this.editMode() && this.canAttend ? ['id','name','shares','attendance'] : ['id','name','shares'];
   }
@@ -285,13 +286,13 @@ export class ElectionDetailComponent implements AfterViewInit {
   quorum = signal<{total:number,present:number,quorum:number}|null>(null);
   electionInfo = signal<any|null>(null);
 
-  padronCtrl = new FormControl('', Validators.required);
+  padronCtrl = new FormControl<PadronRow | string>('', Validators.required);
   questionCtrl = new FormControl('', Validators.required);
   optionCtrl = new FormControl('', Validators.required);
   voteStep1 = inject(FormBuilder).group({ padron: this.padronCtrl });
   voteStep2 = inject(FormBuilder).group({ questionId: this.questionCtrl });
   voteStep3 = inject(FormBuilder).group({ optionId: this.optionCtrl });
-  filteredPadron = signal<any[]>([]);
+  filteredPadron = signal<PadronRow[]>([]);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -318,8 +319,8 @@ export class ElectionDetailComponent implements AfterViewInit {
     if (this.editMode()) this.prefillEdit();
     this.padronCtrl.valueChanges.subscribe(val => {
       const term = (typeof val === 'string' ? val : val?.shareholderName || '').toLowerCase();
-      const base = this.padronDS.data.filter((p:any) => p.attendance === 'Presencial' || p.attendance === 'Virtual');
-      this.filteredPadron.set(base.filter((p:any) => (p.shareholderName || '').toLowerCase().includes(term)));
+      const base = this.padronDS.data.filter((p:PadronRow) => p.attendance === 'Presencial' || p.attendance === 'Virtual');
+      this.filteredPadron.set(base.filter((p:PadronRow) => (p.shareholderName || '').toLowerCase().includes(term)));
     });
   }
   ngAfterViewInit(){
@@ -451,6 +452,9 @@ export class ElectionDetailComponent implements AfterViewInit {
     const questionId = this.questionCtrl.value;
     const optionId = this.optionCtrl.value;
     if (!padron || !questionId || !optionId) return;
+    if (typeof padron !== 'object' || !padron.id) {
+      this.snack.open('Seleccione un accionista válido','OK',{duration:2000});
+      return;
     const question = this.results().find((q:any)=> (q.questionId ?? q.QuestionId) === questionId);
     const option = this.getOptionsForSelectedQuestion().find((o:any)=> (o.optionId ?? o.OptionId) === optionId);
     const ref = this.dialog.open(VoteConfirmDialogComponent, { data: { shareholder: padron, question, option } });
