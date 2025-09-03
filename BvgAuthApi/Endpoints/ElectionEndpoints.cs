@@ -248,17 +248,18 @@ namespace BvgAuthApi.Endpoints
             }).RequireAuthorization();
 
             // Assigned elections for current user and role
-            g.MapGet("/assigned", async (string? role, BvgDbContext db, ClaimsPrincipal user) =>
+            g.MapGet("/assigned", async (string role, BvgDbContext db, ClaimsPrincipal user) =>
             {
                 var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
-                var r = string.IsNullOrWhiteSpace(role) ? AppRoles.ElectionRegistrar : role!;
-                r = r.Trim();
-                var rLower = r.ToLower();
+                var rLower = role.Trim().ToLower();
                 var ids = await db.ElectionUserAssignments
                     .Where(a => a.UserId == userId && a.Role.ToLower() == rLower)
                     .Select(a => a.ElectionId)
                     .ToListAsync();
-                var items = await db.Elections.Where(e => ids.Contains(e.Id)).Select(e => new { e.Id, e.Name, e.ScheduledAt, e.IsClosed }).ToListAsync();
+                var items = await db.Elections
+                    .Where(e => ids.Contains(e.Id))
+                    .Select(e => new { e.Id, e.Name, e.ScheduledAt, e.IsClosed })
+                    .ToListAsync();
                 return Results.Ok(items);
             }).RequireAuthorization();
 
