@@ -1,7 +1,7 @@
 import { Component, inject, signal, AfterViewInit, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { NgFor, NgIf, DecimalPipe, DatePipe } from '@angular/common';
+import { NgFor, NgIf, DecimalPipe, DatePipe, NgClass } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -28,7 +28,7 @@ import { PadronRow } from '../../shared/utils/padron.utils';
 @Component({
   selector: 'app-election-detail',
   standalone: true,
-  imports: [NgFor, NgIf, DecimalPipe, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, FormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, MatProgressBarModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule],
+  imports: [NgFor, NgIf, DecimalPipe, DatePipe, NgClass, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, FormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, MatProgressBarModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule],
   template: `
   <div class="page">
     <h2 *ngIf="!canRegister || editMode()">Elección {{id()}}</h2>
@@ -184,36 +184,53 @@ import { PadronRow } from '../../shared/utils/padron.utils';
     <!-- Se muestra el registro de votos si el usuario tiene permisos -->
     <mat-card *ngIf="canRegister">
       <h3>Registrar votos</h3>
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>Pregunta</mat-label>
-        <mat-select [formControl]="questionCtrl">
-          <mat-option *ngFor="let q of results()" [value]="q.questionId || q.QuestionId">{{q.text}}</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <table mat-table [dataSource]="filteredPadron()" class="mat-elevation-z1 compact" *ngIf="questionCtrl.value">
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>Accionista</th>
-          <td mat-cell *matCellDef="let p">{{p.shareholderName}}</td>
-        </ng-container>
-        <ng-container matColumnDef="shares">
-          <th mat-header-cell *matHeaderCellDef>Acciones</th>
-          <td mat-cell *matCellDef="let p">{{p.shares}}</td>
-        </ng-container>
-        <ng-container matColumnDef="vote">
-          <th mat-header-cell *matHeaderCellDef>Opción</th>
-          <td mat-cell *matCellDef="let p">
-            <mat-select [(ngModel)]="voteSelections[p.id]" placeholder="Opción">
-              <mat-option *ngFor="let o of getOptionsForSelectedQuestion()" [value]="o.optionId || o.OptionId">{{o.text}}</mat-option>
-            </mat-select>
-          </td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="bulkCols"></tr>
-        <tr mat-row *matRowDef="let row; columns: bulkCols;"></tr>
-      </table>
-      <div class="vote-form">
-        <button mat-raised-button color="primary" (click)="submitBatch()" [disabled]="!questionCtrl.value">Registrar</button>
-      </div>
-      <div class="mt8" *ngIf="canClose">
+      <ng-container *ngIf="!showSummary(); else summaryTpl">
+        <div class="progress">Pregunta {{currentIndex()+1}} de {{results().length}}</div>
+        <h4>{{currentQuestion()?.text}}</h4>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>Aplicar a todos</mat-label>
+          <mat-select [value]="globalSelections[currentQuestionId()]" (selectionChange)="applyAll($event.value)" aria-label="Aplicar opción a todos">
+            <mat-option *ngFor="let o of getOptionsForCurrentQuestion()" [value]="o.optionId || o.OptionId">{{o.text}}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <table mat-table [dataSource]="filteredPadron()" class="mat-elevation-z1 compact">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Accionista</th>
+            <td mat-cell *matCellDef="let p">{{p.shareholderName}}</td>
+          </ng-container>
+          <ng-container matColumnDef="shares">
+            <th mat-header-cell *matHeaderCellDef>Acciones</th>
+            <td mat-cell *matCellDef="let p">{{p.shares}}</td>
+          </ng-container>
+          <ng-container matColumnDef="vote">
+            <th mat-header-cell *matHeaderCellDef>Opción</th>
+            <td mat-cell *matCellDef="let p" [ngClass]="{'override': currentSelectionMap()[p.id] !== globalSelections[currentQuestionId()]}">
+              <mat-select [(ngModel)]="currentSelectionMap()[p.id]" placeholder="Opción" aria-label="Seleccionar opción para {{p.shareholderName}}">
+                <mat-option *ngFor="let o of getOptionsForCurrentQuestion()" [value]="o.optionId || o.OptionId">{{o.text}}</mat-option>
+              </mat-select>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="bulkCols"></tr>
+          <tr mat-row *matRowDef="let row; columns: bulkCols;"></tr>
+        </table>
+        <div class="warn" *ngIf="!canGoNext()">Debes registrar todos los votos antes de continuar.</div>
+        <div class="vote-form">
+          <button mat-stroked-button (click)="prevQuestion()" [disabled]="currentIndex()===0" aria-label="Pregunta anterior">Anterior</button>
+          <button mat-raised-button color="primary" (click)="nextQuestion()" [disabled]="!canGoNext()" aria-label="Siguiente pregunta">{{currentIndex()+1 < results().length ? 'Siguiente' : 'Resumen'}}</button>
+        </div>
+      </ng-container>
+      <ng-template #summaryTpl>
+        <h4>Resumen de votos</h4>
+        <div *ngFor="let q of results()" class="q">
+          <h5>{{q.text}}</h5>
+          <div *ngFor="let o of (q.options ?? q.Options)" class="summary-option">{{o.text}}: {{summaryCount(q.questionId || q.QuestionId, o.optionId || o.OptionId)}}</div>
+        </div>
+        <div class="vote-form">
+          <button mat-stroked-button (click)="showSummary.set(false); currentIndex.set(0)">Editar</button>
+          <button mat-raised-button color="primary" (click)="submitAll()">Enviar votos</button>
+        </div>
+      </ng-template>
+      <div class="mt8" *ngIf="canClose && !showSummary()">
         <button mat-stroked-button color="warn" (click)="closeElection()">Cerrar elección</button>
       </div>
     </mat-card>
@@ -232,6 +249,10 @@ import { PadronRow } from '../../shared/utils/padron.utils';
      table.compact th, table.compact td{ font-size:13px }
      .edit-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px; align-items:end }
      .actions{ grid-column: 1 / -1; display:flex; gap:8px; justify-content:flex-end }
+     .progress{font-weight:600;margin-bottom:8px}
+     .override mat-select{background:#fff3cd}
+     .summary-option{margin-left:12px}
+     .warn{color:#d32f2f;font-size:13px;margin:4px 0}
     `]
 })
 export class ElectionDetailComponent implements AfterViewInit {
@@ -262,9 +283,11 @@ export class ElectionDetailComponent implements AfterViewInit {
   electionInfo = signal<any|null>(null);
 
   padronCtrl = new FormControl<PadronRow | string>('', Validators.required);
-  questionCtrl = new FormControl('', Validators.required);
   filteredPadron = signal<PadronRow[]>([]);
-  voteSelections: Record<string, string> = {};
+  currentIndex = signal(0);
+  showSummary = signal(false);
+  globalSelections: Record<string,string> = {};
+  voteSelections: Record<string, Record<string,string>> = {};
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -294,7 +317,6 @@ export class ElectionDetailComponent implements AfterViewInit {
       const base = this.padronDS.data.filter((p:PadronRow) => p.attendance === 'Presencial' || p.attendance === 'Virtual');
       this.filteredPadron.set(base.filter((p:PadronRow) => (p.shareholderName || '').toLowerCase().includes(term)));
     });
-    this.questionCtrl.valueChanges.subscribe(_ => { this.voteSelections = {}; });
   }
   ngAfterViewInit(){
     if (this.paginator) this.padronDS.paginator = this.paginator;
@@ -333,7 +355,7 @@ export class ElectionDetailComponent implements AfterViewInit {
 
   loadResults(){
     this.http.get<any[]>(`/api/elections/${this.id()}/results`).subscribe({
-      next: d => this.results.set(d as any[]),
+      next: d => { this.results.set(d as any[]); if(d && d.length){ this.currentIndex.set(0); this.showSummary.set(false); } },
       error: err => {
         this.results.set([]);
         if (err.status === 403) this.snack.open('No autorizado para ver resultados','OK',{duration:2500});
@@ -404,20 +426,25 @@ export class ElectionDetailComponent implements AfterViewInit {
   }
   cancelEdit(){ this.router.navigate(['/elections', this.id()]); this.editMode.set(false); }
 
-  getOptionsForSelectedQuestion(){
-    const qId = this.questionCtrl.value;
-    const q = this.results().find((x:any)=> (x.questionId ?? x.QuestionId) === qId);
-    return q ? (q.options ?? q.Options) : [];
-  }
-  submitBatch(){
-    const qId = this.questionCtrl.value;
-    if (!qId) return;
-    const votes = Object.entries(this.voteSelections)
-      .filter(([, opt]) => !!opt)
-      .map(([padronId, optionId]) => ({ padronId, questionId: qId, optionId }));
-    if (votes.length === 0){ this.snack.open('Seleccione al menos un voto','OK',{duration:2000}); return; }
+  currentQuestionId(){ return this.results()[this.currentIndex()]?.questionId ?? this.results()[this.currentIndex()]?.QuestionId; }
+  currentQuestion(){ return this.results()[this.currentIndex()]; }
+  getOptionsForCurrentQuestion(){ return this.currentQuestion()?.options ?? this.currentQuestion()?.Options ?? []; }
+  currentSelectionMap(){ const qId = this.currentQuestionId(); return this.voteSelections[qId] || (this.voteSelections[qId] = {}); }
+  applyAll(optionId: string){ const map = this.currentSelectionMap(); this.globalSelections[this.currentQuestionId()] = optionId; for (const p of this.filteredPadron()) map[p.id] = optionId; }
+  canGoNext(){ const map = this.currentSelectionMap(); return this.filteredPadron().every(p => !!map[p.id]); }
+  nextQuestion(){ if (!this.canGoNext()){ this.snack.open('Faltan votos por registrar','OK',{duration:2500}); return; } if (this.currentIndex() < this.results().length - 1) this.currentIndex.update(i=>i+1); else this.showSummary.set(true); }
+  prevQuestion(){ if (this.currentIndex() > 0) this.currentIndex.update(i=>i-1); }
+  summaryCount(qId:string, optionId:string){ const map = this.voteSelections[qId] || {}; return Object.values(map).filter(v=>v===optionId).length; }
+  submitAll(){
+    const votes:any[] = [];
+    for (const q of this.results()){
+      const qId = q.questionId || q.QuestionId;
+      const map = this.voteSelections[qId] || {};
+      for (const pid of Object.keys(map)) votes.push({ padronId: pid, questionId: qId, optionId: map[pid] });
+    }
+    if (!votes.length){ this.snack.open('No hay votos para registrar','OK',{duration:2000}); return; }
     this.http.post(`/api/elections/${this.id()}/votes/batch`, { votes }).subscribe({
-      next: _=> { this.snack.open('Votos registrados','OK',{duration:1500}); this.loadResults(); this.voteSelections = {}; },
+      next: _=> { this.snack.open('Votos registrados','OK',{duration:1500}); this.loadResults(); this.voteSelections = {}; this.globalSelections = {}; this.showSummary.set(false); this.currentIndex.set(0); },
       error: err => {
         if (err.status === 400) this.snack.open('Quórum no alcanzado o elección cerrada','OK',{duration:2500});
         else if (err.status === 403) this.snack.open('No tienes permiso para registrar','OK',{duration:2500});
