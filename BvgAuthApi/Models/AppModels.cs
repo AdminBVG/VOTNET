@@ -15,7 +15,6 @@
         public static string GlobalAdmin => _roles[nameof(GlobalAdmin)];
         public static string VoteAdmin   => _roles[nameof(VoteAdmin)];
         public static string Functional  => _roles[nameof(Functional)];
-        public static string ElectionRegistrar => _roles[nameof(ElectionRegistrar)];
         public static string AttendanceRegistrar => _roles[nameof(AttendanceRegistrar)];
         public static string VoteRegistrar => _roles[nameof(VoteRegistrar)];
         public static string ElectionObserver  => _roles[nameof(ElectionObserver)];
