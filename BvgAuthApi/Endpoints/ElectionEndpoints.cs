@@ -558,6 +558,14 @@ namespace BvgAuthApi.Endpoints
                 return Results.Ok(new { Count = dto.Votes.Count });
             }).RequireAuthorization();
 
+            g.MapGet("/{id}/votes/logs", async (Guid id, BvgDbContext db) =>
+            {
+                var logs = await db.Votes.Where(v => v.ElectionId == id)
+                    .Select(v => new { v.Id, v.PadronEntryId, v.ElectionQuestionId, v.ElectionOptionId, v.RegistrarId, v.Timestamp })
+                    .ToListAsync();
+                return Results.Ok(logs);
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
+
             // Attendance marking
             g.MapPost("/{id}/padron/{padronId}/attendance", async (Guid id, Guid padronId, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
