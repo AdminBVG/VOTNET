@@ -455,6 +455,7 @@ export class ElectionDetailComponent implements AfterViewInit {
     if (typeof padron !== 'object' || !padron.id) {
       this.snack.open('Seleccione un accionista válido','OK',{duration:2000});
       return;
+    }
     const question = this.results().find((q:any)=> (q.questionId ?? q.QuestionId) === questionId);
     const option = this.getOptionsForSelectedQuestion().find((o:any)=> (o.optionId ?? o.OptionId) === optionId);
     const ref = this.dialog.open(VoteConfirmDialogComponent, { data: { shareholder: padron, question, option } });
