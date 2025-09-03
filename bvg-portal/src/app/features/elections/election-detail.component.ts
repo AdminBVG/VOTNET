@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { ReactiveFormsModule, FormBuilder, Validators, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, Validators, FormControl } from '@angular/forms';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { LiveService } from '../../core/live.service';
@@ -16,23 +16,19 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatStepperModule, MatStepper } from '@angular/material/stepper';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { FilterPresentPipe } from './filter-present.pipe';
 import { AuthService } from '../../core/auth.service';
-import { VoteConfirmDialogComponent } from './vote-confirm-dialog.component';
 import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
 import { PadronRow } from '../../shared/utils/padron.utils';
 
 @Component({
   selector: 'app-election-detail',
   standalone: true,
-  imports: [NgFor, NgIf, DecimalPipe, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, MatProgressBarModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule, MatStepperModule, MatAutocompleteModule, MatDialogModule],
+  imports: [NgFor, NgIf, DecimalPipe, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, FormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, MatProgressBarModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule],
   template: `
   <div class="page">
     <h2 *ngIf="!canRegister || editMode()">Elección {{id()}}</h2>
@@ -187,57 +183,36 @@ import { PadronRow } from '../../shared/utils/padron.utils';
 
     <!-- Se muestra el registro de votos si el usuario tiene permisos -->
     <mat-card *ngIf="canRegister">
-      <h3>Registrar voto</h3>
-      <mat-stepper orientation="horizontal" linear #voteStepper>
-        <mat-step [stepControl]="voteStep1">
-          <form [formGroup]="voteStep1">
-            <ng-template matStepLabel>Accionista</ng-template>
-            <mat-form-field appearance="outline" class="full">
-              <mat-label>Accionista presente</mat-label>
-              <input type="text" matInput formControlName="padron" [matAutocomplete]="padronAuto">
-              <mat-autocomplete #padronAuto="matAutocomplete" [displayWith]="displayPadron">
-                <mat-option *ngFor="let p of filteredPadron()" [value]="p">{{p.shareholderName}} ({{p.shares}})</mat-option>
-              </mat-autocomplete>
-              <mat-error *ngIf="padronCtrl.invalid && padronCtrl.touched">Seleccione un accionista</mat-error>
-            </mat-form-field>
-            <div>
-              <button mat-button matStepperNext [disabled]="voteStep1.invalid">Siguiente</button>
-            </div>
-          </form>
-        </mat-step>
-        <mat-step [stepControl]="voteStep2">
-          <form [formGroup]="voteStep2">
-            <ng-template matStepLabel>Pregunta</ng-template>
-            <mat-form-field appearance="outline" class="full">
-              <mat-label>Pregunta</mat-label>
-              <mat-select formControlName="questionId" (selectionChange)="optionCtrl.reset()">
-                <mat-option *ngFor="let q of results()" [value]="q.questionId">{{q.text}}</mat-option>
-              </mat-select>
-              <mat-error *ngIf="questionCtrl.invalid && questionCtrl.touched">Seleccione una pregunta</mat-error>
-            </mat-form-field>
-            <div>
-              <button mat-button matStepperPrevious>Anterior</button>
-              <button mat-button matStepperNext [disabled]="voteStep2.invalid">Siguiente</button>
-            </div>
-          </form>
-        </mat-step>
-        <mat-step [stepControl]="voteStep3">
-          <form [formGroup]="voteStep3">
-            <ng-template matStepLabel>Opción</ng-template>
-            <mat-form-field appearance="outline" class="full">
-              <mat-label>Opción</mat-label>
-              <mat-select formControlName="optionId">
-                <mat-option *ngFor="let o of getOptionsForSelectedQuestion()" [value]="o.optionId">{{o.text}}</mat-option>
-              </mat-select>
-              <mat-error *ngIf="optionCtrl.invalid && optionCtrl.touched">Seleccione una opción</mat-error>
-            </mat-form-field>
-            <div>
-              <button mat-button matStepperPrevious>Anterior</button>
-              <button mat-raised-button color="primary" (click)="confirmVote(voteStepper)" [disabled]="voteStep3.invalid">Registrar</button>
-            </div>
-          </form>
-        </mat-step>
-      </mat-stepper>
+      <h3>Registrar votos</h3>
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Pregunta</mat-label>
+        <mat-select [formControl]="questionCtrl">
+          <mat-option *ngFor="let q of results()" [value]="q.questionId || q.QuestionId">{{q.text}}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <table mat-table [dataSource]="filteredPadron()" class="mat-elevation-z1 compact" *ngIf="questionCtrl.value">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Accionista</th>
+          <td mat-cell *matCellDef="let p">{{p.shareholderName}}</td>
+        </ng-container>
+        <ng-container matColumnDef="shares">
+          <th mat-header-cell *matHeaderCellDef>Acciones</th>
+          <td mat-cell *matCellDef="let p">{{p.shares}}</td>
+        </ng-container>
+        <ng-container matColumnDef="vote">
+          <th mat-header-cell *matHeaderCellDef>Opción</th>
+          <td mat-cell *matCellDef="let p">
+            <mat-select [(ngModel)]="voteSelections[p.id]" placeholder="Opción">
+              <mat-option *ngFor="let o of getOptionsForSelectedQuestion()" [value]="o.optionId || o.OptionId">{{o.text}}</mat-option>
+            </mat-select>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="bulkCols"></tr>
+        <tr mat-row *matRowDef="let row; columns: bulkCols;"></tr>
+      </table>
+      <div class="vote-form">
+        <button mat-raised-button color="primary" (click)="submitBatch()" [disabled]="!questionCtrl.value">Registrar</button>
+      </div>
       <div class="mt8" *ngIf="canClose">
         <button mat-stroked-button color="warn" (click)="closeElection()">Cerrar elección</button>
       </div>
@@ -266,7 +241,6 @@ export class ElectionDetailComponent implements AfterViewInit {
   private snack = inject(MatSnackBar);
   private live = inject(LiveService);
   private auth = inject(AuthService);
-  private dialog = inject(MatDialog);
 
   id = signal<string>('');
   editMode = signal(false);
@@ -282,17 +256,15 @@ export class ElectionDetailComponent implements AfterViewInit {
   assignments = signal<any[]>([]);
   assignCols = ['userId','role','action'];
   resCols = ['text','votes','percent'];
+  bulkCols = ['name','shares','vote'];
   results = signal<any[]>([]);
   quorum = signal<{total:number,present:number,quorum:number}|null>(null);
   electionInfo = signal<any|null>(null);
 
   padronCtrl = new FormControl<PadronRow | string>('', Validators.required);
   questionCtrl = new FormControl('', Validators.required);
-  optionCtrl = new FormControl('', Validators.required);
-  voteStep1 = inject(FormBuilder).group({ padron: this.padronCtrl });
-  voteStep2 = inject(FormBuilder).group({ questionId: this.questionCtrl });
-  voteStep3 = inject(FormBuilder).group({ optionId: this.optionCtrl });
   filteredPadron = signal<PadronRow[]>([]);
+  voteSelections: Record<string, string> = {};
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -322,6 +294,7 @@ export class ElectionDetailComponent implements AfterViewInit {
       const base = this.padronDS.data.filter((p:PadronRow) => p.attendance === 'Presencial' || p.attendance === 'Virtual');
       this.filteredPadron.set(base.filter((p:PadronRow) => (p.shareholderName || '').toLowerCase().includes(term)));
     });
+    this.questionCtrl.valueChanges.subscribe(_ => { this.voteSelections = {}; });
   }
   ngAfterViewInit(){
     if (this.paginator) this.padronDS.paginator = this.paginator;
@@ -436,10 +409,15 @@ export class ElectionDetailComponent implements AfterViewInit {
     const q = this.results().find((x:any)=> (x.questionId ?? x.QuestionId) === qId);
     return q ? (q.options ?? q.Options) : [];
   }
-  registerVote(padronId: string, questionId: string, optionId: string){
-    const dto = { padronId, questionId, optionId } as any;
-    this.http.post(`/api/elections/${this.id()}/votes`, dto).subscribe({
-      next: _=> { this.snack.open('Voto registrado','OK',{duration:1500}); this.loadResults(); this.live.onVoteRegistered(()=>{}); },
+  submitBatch(){
+    const qId = this.questionCtrl.value;
+    if (!qId) return;
+    const votes = Object.entries(this.voteSelections)
+      .filter(([, opt]) => !!opt)
+      .map(([padronId, optionId]) => ({ padronId, questionId: qId, optionId }));
+    if (votes.length === 0){ this.snack.open('Seleccione al menos un voto','OK',{duration:2000}); return; }
+    this.http.post(`/api/elections/${this.id()}/votes/batch`, { votes }).subscribe({
+      next: _=> { this.snack.open('Votos registrados','OK',{duration:1500}); this.loadResults(); this.voteSelections = {}; },
       error: err => {
         if (err.status === 400) this.snack.open('Quórum no alcanzado o elección cerrada','OK',{duration:2500});
         else if (err.status === 403) this.snack.open('No tienes permiso para registrar','OK',{duration:2500});
@@ -447,29 +425,6 @@ export class ElectionDetailComponent implements AfterViewInit {
       }
     });
   }
-  confirmVote(stepper: MatStepper){
-    const padron = this.padronCtrl.value;
-    const questionId = this.questionCtrl.value;
-    const optionId = this.optionCtrl.value;
-    if (!padron || !questionId || !optionId) return;
-    if (typeof padron !== 'object' || !padron.id) {
-      this.snack.open('Seleccione un accionista válido','OK',{duration:2000});
-      return;
-    }
-    const question = this.results().find((q:any)=> (q.questionId ?? q.QuestionId) === questionId);
-    const option = this.getOptionsForSelectedQuestion().find((o:any)=> (o.optionId ?? o.OptionId) === optionId);
-    const ref = this.dialog.open(VoteConfirmDialogComponent, { data: { shareholder: padron, question, option } });
-    ref.afterClosed().subscribe(ok => {
-      if (ok){
-        this.registerVote(padron.id, questionId, optionId);
-        stepper.reset();
-        this.padronCtrl.reset('');
-        this.questionCtrl.reset('');
-        this.optionCtrl.reset('');
-      }
-    });
-  }
-  displayPadron(p:any){ return p?.shareholderName || ''; }
   closeElection(){
     this.http.post(`/api/elections/${this.id()}/close`, {}).subscribe({
       next: _=> { this.snack.open('Elección cerrada','OK',{duration:2000}); this.loadResults(); },

@@ -526,6 +526,38 @@ namespace BvgAuthApi.Endpoints
                 return Results.Ok();
             }).RequireAuthorization();
 
+            g.MapPost("/{id}/votes/batch", async (Guid id, [FromBody] BatchVoteDto dto, BvgDbContext db, IHubContext<LiveHub> hub, ClaimsPrincipal user) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.VoteRegistrar))
+                    return Err("forbidden", 403);
+                var election = await db.Elections.Include(e => e.Padron).Include(e => e.Votes).FirstOrDefaultAsync(e => e.Id == id);
+                if (election is null) return Err("election_not_found", 404);
+                if (election.IsClosed) return Err("election_closed", 400);
+                var total = election.Padron.Sum(p => p.Shares);
+                var present = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
+                if (total == 0 || present / total < election.QuorumMinimo)
+                    return Err("quorum_not_met", 400);
+                var registrarId = userId;
+                foreach (var v in dto.Votes)
+                {
+                    db.Votes.Add(new VoteRecord
+                    {
+                        ElectionId = id,
+                        PadronEntryId = v.PadronId,
+                        ElectionQuestionId = v.QuestionId,
+                        ElectionOptionId = v.OptionId,
+                        RegistrarId = registrarId
+                    });
+                }
+                await db.SaveChangesAsync();
+                foreach (var v in dto.Votes)
+                    await hub.Clients.All.SendAsync("voteRegistered", new { ElectionId = id, QuestionId = v.QuestionId, OptionId = v.OptionId });
+                return Results.Ok(new { Count = dto.Votes.Count });
+            }).RequireAuthorization();
+
             // Attendance marking
             g.MapPost("/{id}/padron/{padronId}/attendance", async (Guid id, Guid padronId, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
@@ -678,6 +710,7 @@ namespace BvgAuthApi.Endpoints
         public record CreateQuestionDto(string Text, List<string> Options);
         public record AttendanceDto(AttendanceType Attendance);
         public record VoteDto(Guid PadronId, Guid QuestionId, Guid OptionId);
+        public record BatchVoteDto(List<VoteDto> Votes);
         public record AssignmentDto(string UserId, string Role);
         public record BatchAttendanceDto(List<Guid>? Ids, AttendanceType Attendance);
         public record UpdateElectionDto(string? Name, string? Details, DateTimeOffset? ScheduledAt, decimal? QuorumMinimo);
