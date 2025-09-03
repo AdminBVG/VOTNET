@@ -35,7 +35,7 @@ import { PadronRow } from '../../shared/utils/padron.utils';
   imports: [NgFor, NgIf, DecimalPipe, DatePipe, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, MatProgressBarModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule, MatStepperModule, MatAutocompleteModule, MatDialogModule],
   template: `
   <div class="page">
-    <h2>Elección {{id()}}</h2>
+    <h2 *ngIf="!canRegister || editMode()">Elección {{id()}}</h2>
     <mat-card *ngIf="editMode() && canClose && (!quorum() || (quorum()?.present||0) === 0)" class="mat-elevation-z1">
       <h3>Editar configuración</h3>
       <form [formGroup]="editForm" (ngSubmit)="saveEdit()" class="edit-grid">
@@ -64,7 +64,7 @@ import { PadronRow } from '../../shared/utils/padron.utils';
         </div>
       </form>
     </mat-card>
-    <div class="grid">
+    <div class="grid" *ngIf="!canRegister || editMode()">
       <mat-card *ngIf="!editMode()">
         <h3>Detalle</h3>
         <div *ngIf="electionInfo() as info">
@@ -183,65 +183,65 @@ import { PadronRow } from '../../shared/utils/padron.utils';
           </table>
         </div>
       </mat-card>
-
-      <!-- Se muestra el registro de votos si el usuario tiene permisos -->
-      <mat-card *ngIf="canRegister">
-        <h3>Registrar voto</h3>
-        <mat-stepper orientation="horizontal" linear #voteStepper>
-          <mat-step [stepControl]="voteStep1">
-            <form [formGroup]="voteStep1">
-              <ng-template matStepLabel>Accionista</ng-template>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>Accionista presente</mat-label>
-                <input type="text" matInput formControlName="padron" [matAutocomplete]="padronAuto">
-                <mat-autocomplete #padronAuto="matAutocomplete" [displayWith]="displayPadron">
-                  <mat-option *ngFor="let p of filteredPadron()" [value]="p">{{p.shareholderName}} ({{p.shares}})</mat-option>
-                </mat-autocomplete>
-                <mat-error *ngIf="padronCtrl.invalid && padronCtrl.touched">Seleccione un accionista</mat-error>
-              </mat-form-field>
-              <div>
-                <button mat-button matStepperNext [disabled]="voteStep1.invalid">Siguiente</button>
-              </div>
-            </form>
-          </mat-step>
-          <mat-step [stepControl]="voteStep2">
-            <form [formGroup]="voteStep2">
-              <ng-template matStepLabel>Pregunta</ng-template>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>Pregunta</mat-label>
-                <mat-select formControlName="questionId" (selectionChange)="optionCtrl.reset()">
-                  <mat-option *ngFor="let q of results()" [value]="q.questionId">{{q.text}}</mat-option>
-                </mat-select>
-                <mat-error *ngIf="questionCtrl.invalid && questionCtrl.touched">Seleccione una pregunta</mat-error>
-              </mat-form-field>
-              <div>
-                <button mat-button matStepperPrevious>Anterior</button>
-                <button mat-button matStepperNext [disabled]="voteStep2.invalid">Siguiente</button>
-              </div>
-            </form>
-          </mat-step>
-          <mat-step [stepControl]="voteStep3">
-            <form [formGroup]="voteStep3">
-              <ng-template matStepLabel>Opción</ng-template>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>Opción</mat-label>
-                <mat-select formControlName="optionId">
-                  <mat-option *ngFor="let o of getOptionsForSelectedQuestion()" [value]="o.optionId">{{o.text}}</mat-option>
-                </mat-select>
-                <mat-error *ngIf="optionCtrl.invalid && optionCtrl.touched">Seleccione una opción</mat-error>
-              </mat-form-field>
-              <div>
-                <button mat-button matStepperPrevious>Anterior</button>
-                <button mat-raised-button color="primary" (click)="confirmVote(voteStepper)" [disabled]="voteStep3.invalid">Registrar</button>
-              </div>
-            </form>
-          </mat-step>
-        </mat-stepper>
-        <div class="mt8" *ngIf="canClose">
-          <button mat-stroked-button color="warn" (click)="closeElection()">Cerrar elección</button>
-        </div>
-      </mat-card>
     </div>
+
+    <!-- Se muestra el registro de votos si el usuario tiene permisos -->
+    <mat-card *ngIf="canRegister">
+      <h3>Registrar voto</h3>
+      <mat-stepper orientation="horizontal" linear #voteStepper>
+        <mat-step [stepControl]="voteStep1">
+          <form [formGroup]="voteStep1">
+            <ng-template matStepLabel>Accionista</ng-template>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Accionista presente</mat-label>
+              <input type="text" matInput formControlName="padron" [matAutocomplete]="padronAuto">
+              <mat-autocomplete #padronAuto="matAutocomplete" [displayWith]="displayPadron">
+                <mat-option *ngFor="let p of filteredPadron()" [value]="p">{{p.shareholderName}} ({{p.shares}})</mat-option>
+              </mat-autocomplete>
+              <mat-error *ngIf="padronCtrl.invalid && padronCtrl.touched">Seleccione un accionista</mat-error>
+            </mat-form-field>
+            <div>
+              <button mat-button matStepperNext [disabled]="voteStep1.invalid">Siguiente</button>
+            </div>
+          </form>
+        </mat-step>
+        <mat-step [stepControl]="voteStep2">
+          <form [formGroup]="voteStep2">
+            <ng-template matStepLabel>Pregunta</ng-template>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Pregunta</mat-label>
+              <mat-select formControlName="questionId" (selectionChange)="optionCtrl.reset()">
+                <mat-option *ngFor="let q of results()" [value]="q.questionId">{{q.text}}</mat-option>
+              </mat-select>
+              <mat-error *ngIf="questionCtrl.invalid && questionCtrl.touched">Seleccione una pregunta</mat-error>
+            </mat-form-field>
+            <div>
+              <button mat-button matStepperPrevious>Anterior</button>
+              <button mat-button matStepperNext [disabled]="voteStep2.invalid">Siguiente</button>
+            </div>
+          </form>
+        </mat-step>
+        <mat-step [stepControl]="voteStep3">
+          <form [formGroup]="voteStep3">
+            <ng-template matStepLabel>Opción</ng-template>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Opción</mat-label>
+              <mat-select formControlName="optionId">
+                <mat-option *ngFor="let o of getOptionsForSelectedQuestion()" [value]="o.optionId">{{o.text}}</mat-option>
+              </mat-select>
+              <mat-error *ngIf="optionCtrl.invalid && optionCtrl.touched">Seleccione una opción</mat-error>
+            </mat-form-field>
+            <div>
+              <button mat-button matStepperPrevious>Anterior</button>
+              <button mat-raised-button color="primary" (click)="confirmVote(voteStepper)" [disabled]="voteStep3.invalid">Registrar</button>
+            </div>
+          </form>
+        </mat-step>
+      </mat-stepper>
+      <div class="mt8" *ngIf="canClose">
+        <button mat-stroked-button color="warn" (click)="closeElection()">Cerrar elección</button>
+      </div>
+    </mat-card>
   </div>
   `,
   styles: [
