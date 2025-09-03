@@ -24,6 +24,7 @@ import { FilterPresentPipe } from './filter-present.pipe';
 import { AuthService } from '../../core/auth.service';
 import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
 import { PadronRow } from '../../shared/utils/padron.utils';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-election-detail',
@@ -443,10 +444,18 @@ export class ElectionDetailComponent implements AfterViewInit {
       for (const pid of Object.keys(map)) votes.push({ padronId: pid, questionId: qId, optionId: map[pid] });
     }
     if (!votes.length){ this.snack.open('No hay votos para registrar','OK',{duration:2000}); return; }
+    const onSuccess = () => { this.snack.open('Votos registrados','OK',{duration:1500}); this.loadResults(); this.voteSelections = {}; this.globalSelections = {}; this.showSummary.set(false); this.currentIndex.set(0); };
     this.http.post(`/api/elections/${this.id()}/votes/batch`, { votes }).subscribe({
-      next: _=> { this.snack.open('Votos registrados','OK',{duration:1500}); this.loadResults(); this.voteSelections = {}; this.globalSelections = {}; this.showSummary.set(false); this.currentIndex.set(0); },
+      next: _=> onSuccess(),
       error: err => {
-        if (err.status === 400) this.snack.open('Quórum no alcanzado o elección cerrada','OK',{duration:2500});
+        if (err.status === 404){
+          const calls = votes.map(v => this.http.post(`/api/elections/${this.id()}/votes`, v));
+          forkJoin(calls).subscribe({
+            next: _=> onSuccess(),
+            error: _=> this.snack.open('Error al registrar voto','OK',{duration:2500})
+          });
+        }
+        else if (err.status === 400) this.snack.open('Quórum no alcanzado o elección cerrada','OK',{duration:2500});
         else if (err.status === 403) this.snack.open('No tienes permiso para registrar','OK',{duration:2500});
         else this.snack.open('Error al registrar voto','OK',{duration:2500});
       }
