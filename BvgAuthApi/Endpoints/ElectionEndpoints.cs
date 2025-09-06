@@ -17,6 +17,43 @@ namespace BvgAuthApi.Endpoints
         public static IEndpointRouteBuilder MapElections(this IEndpointRouteBuilder app)
         {
             var g = app.MapGroup("/api/elections");
+            // Batch status: /api/elections/status?ids=guid1,guid2
+            g.MapGet("/status", async ([FromQuery] string? ids, BvgDbContext db) =>
+            {
+                var result = new Dictionary<Guid, object>();
+                if (string.IsNullOrWhiteSpace(ids)) return Results.Ok(result);
+                var list = new List<Guid>();
+                foreach (var raw in ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (Guid.TryParse(raw, out var gid)) list.Add(gid);
+                }
+                if (list.Count == 0) return Results.Ok(result);
+                var elections = await db.Elections.Where(e => list.Contains(e.Id)).Include(e => e.Padron).ToListAsync();
+                var flags = await db.ElectionFlags.Where(f => list.Contains(f.ElectionId)).ToListAsync();
+                foreach (var e in elections)
+                {
+                    var f = flags.FirstOrDefault(x => x.ElectionId == e.Id);
+                    var totalShares = e.Padron.Sum(p => p.Shares);
+                    var presentShares = e.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
+                    var status = e.Status.ToString();
+                    bool CanOpenReg = e.Status == ElectionStatus.Draft;
+                    bool CanCloseReg = e.Status == ElectionStatus.RegistrationOpen;
+                    bool CanOpenVote = e.Status == ElectionStatus.RegistrationClosed;
+                    bool CanCloseVote = e.Status == ElectionStatus.VotingOpen;
+                    bool CanCertify = e.Status == ElectionStatus.VotingClosed;
+                    bool CanReopenReg = e.Status == ElectionStatus.RegistrationClosed;
+                    result[e.Id] = new
+                    {
+                        e.Id,
+                        Status = status,
+                        Locked = f?.AttendanceClosed == true,
+                        e.QuorumMinimo,
+                        Shares = new { Total = totalShares, Present = presentShares },
+                        Actions = new { CanOpenReg, CanCloseReg, CanOpenVote, CanCloseVote, CanCertify, CanReopenReg }
+                    };
+                }
+                return Results.Ok(result);
+            }).RequireAuthorization();
             // Estado actual + acciones permitidas
             g.MapGet("/{id}/status", async (Guid id, BvgDbContext db) =>
             {
