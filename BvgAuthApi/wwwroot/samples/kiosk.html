@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kiosco BVG</title>
+  <style>
+    :root{ --bg:#0b0e13; --fg:#f1f5f9; --accent:#22c55e; --muted:#94a3b8; --err:#ef4444; --border:#1f2937 }
+    body{background:var(--bg);color:var(--fg);margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    header{padding:12px 16px;background:#0e131a;display:flex;justify-content:space-between;align-items:center}
+    input,select,button{font-size:20px;padding:12px 14px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--fg)}
+    .wrap{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .card{background:#0e131a;padding:16px;border-radius:12px}
+    .ok{color:var(--accent)} .muted{color:var(--muted)} .err{color:var(--err)}
+    .big{font-size:24px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="big">Modo Kiosco</div>
+    <div>
+      <label>ElectionId <input id="eid" size="30"/></label>
+      <label>Token <input id="tok" size="24"/></label>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="card">
+      <div class="big">Asistencia</div>
+      <div class="muted">Escanea o ingresa el ID de padrón</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="pid" placeholder="PadronId (GUID)" size="40" autofocus/>
+        <select id="att">
+          <option>Presencial</option>
+          <option>Virtual</option>
+          <option>None</option>
+        </select>
+        <button id="btnMark">Marcar</button>
+      </div>
+      <div id="ainfo" class="muted" style="margin-top:8px">-</div>
+    </div>
+    <div class="card">
+      <div class="big">Votación (rápida)</div>
+      <div class="muted">Carga primera pregunta y emite voto</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="btnLoadQ">Cargar</button>
+        <select id="opts"></select>
+        <button id="btnVote">Votar</button>
+      </div>
+      <div id="vinfo" class="muted" style="margin-top:8px">-</div>
+    </div>
+  </div>
+  <script>
+    const eid = document.getElementById('eid');
+    const tok = document.getElementById('tok');
+    const pid = document.getElementById('pid');
+    const att = document.getElementById('att');
+    const btnMark = document.getElementById('btnMark');
+    const ainfo = document.getElementById('ainfo');
+    const btnLoadQ = document.getElementById('btnLoadQ');
+    const opts = document.getElementById('opts');
+    const btnVote = document.getElementById('btnVote');
+    const vinfo = document.getElementById('vinfo');
+
+    function auth(){ const t=tok.value.trim(); return t? { 'Authorization':'Bearer '+t } : {}; }
+    function show(el, text, cls){ el.textContent=text; el.className=cls||'muted'; }
+
+    btnMark.onclick = async ()=>{
+      try{
+        const id = eid.value.trim(); const p = pid.value.trim();
+        const body = { attendance: att.value, reason: 'Kiosco' };
+        const r = await fetch(`/api/elections/${id}/padron/${p}/attendance`, { method:'POST', headers:{'Content-Type':'application/json', ...auth()}, body: JSON.stringify(body) });
+        if(!r.ok){ const e=await r.json().catch(()=>({})); show(ainfo, 'Error: '+(e.error||r.status), 'err'); return }
+        show(ainfo, 'Marcado OK', 'ok'); pid.select();
+      }catch(err){ show(ainfo, 'Error: '+err, 'err') }
+    };
+
+    btnLoadQ.onclick = async()=>{
+      const id = eid.value.trim();
+      const r = await fetch(`/api/elections/${id}/start`, { method:'POST', headers: auth() });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); show(vinfo, 'Error: '+(e.error||r.status), 'err'); return; }
+      const d = await r.json();
+      opts.innerHTML = (d.Question?.Options||[]).map(o=>`<option value="${o.Id}">${o.Text}</option>`).join('');
+      show(vinfo, 'Pregunta cargada', 'ok');
+      btnVote.onclick = async()=>{
+        const qId = d.Question.Id; const opt = opts.value; const pad = pid.value.trim();
+        const r2 = await fetch(`/api/elections/${id}/votes`, { method:'POST', headers:{'Content-Type':'application/json', ...auth()}, body: JSON.stringify({ PadronId: pad, QuestionId: qId, OptionId: opt }) });
+        if(!r2.ok){ const e=await r2.json().catch(()=>({})); show(vinfo, 'Error: '+(e.error||r2.status), 'err'); return; }
+        show(vinfo, 'Voto registrado', 'ok');
+      };
+    };
+  </script>
+</body>
+</html>
+

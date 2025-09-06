@@ -35,6 +35,24 @@
         public List<ElectionQuestion> Questions { get; set; } = new();
         public List<VoteRecord> Votes { get; set; } = new();
         public bool IsClosed { get; set; }
+        public ElectionStatus Status { get; set; } = ElectionStatus.Draft;
+        public DateTimeOffset? RegistrationOpenedAt { get; set; }
+        public DateTimeOffset? RegistrationClosedAt { get; set; }
+        public DateTimeOffset? VotingOpenedAt { get; set; }
+        public DateTimeOffset? VotingClosedAt { get; set; }
+        public DateTimeOffset? CertifiedAt { get; set; }
+        public string? LastStatusChangedBy { get; set; }
+        public DateTimeOffset? LastStatusChangedAt { get; set; }
+    }
+
+    public enum ElectionStatus
+    {
+        Draft = 0,
+        RegistrationOpen = 1,
+        RegistrationClosed = 2,
+        VotingOpen = 3,
+        VotingClosed = 4,
+        Certified = 5
     }
 
     public class ElectionQuestion
@@ -67,6 +85,7 @@
         public AttendanceType OldAttendance { get; set; }
         public AttendanceType NewAttendance { get; set; }
         public string UserId { get; set; } = default!;
+        public string? Reason { get; set; }
         public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
     }
 

@@ -128,6 +128,9 @@ builder.Services.AddAuthorization(opt =>
 
 builder.Services.AddSignalR();
 builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<MetricsService>();
+builder.Services.AddHostedService<AutoOpenService>();
 builder.Services.Configure<AzureAdOptions>(builder.Configuration.GetSection("AzureAd"));
 builder.Services.AddSingleton<MicrosoftTokenValidator>();
 
@@ -181,6 +184,9 @@ app.UseAuthorization();
 // Anti-forgery middleware to satisfy endpoints that require it
 app.UseAntiforgery();
 
+// Serve default static files from wwwroot (for sample dashboard)
+app.UseStaticFiles();
+
 app.MapSwagger();
 app.UseSwaggerUI();
 
@@ -198,6 +204,7 @@ app.MapHub<LiveHub>("/hubs/live");
 app.MapAuth();
 app.MapUserAdmin();
 app.MapElections();
+app.MapReports();
 app.MapConfig();
 if (app.Environment.IsDevelopment()) app.MapDebug();
 

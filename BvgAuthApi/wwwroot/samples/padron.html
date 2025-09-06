@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Padrón - BVG</title>
+  <style>
+    :root{ --bg:#ffffff; --fg:#111; --card:#f6f7f9; --muted:#666; --border:#ddd; --ok:#15803d; --warn:#a16207; --err:#b91c1c }
+    [data-theme=dark]{ --bg:#0f1115; --fg:#e5e7eb; --card:#1a1e24; --muted:#9ca3af; --border:#2a2f37; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444 }
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    header{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--card);padding:10px 16px;position:sticky;top:0}
+    input,select,button{background:transparent;color:var(--fg);border:1px solid var(--border);padding:6px 8px;border-radius:6px}
+    .wrap{padding:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left}
+    th{background:var(--card)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    .muted{color:var(--muted)}
+    .badge{padding:2px 6px;border-radius:999px;border:1px solid var(--border)}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <strong>Padrón</strong>
+      <span class="muted" id="status">-</span>
+    </div>
+    <div>
+      <label>ElectionId <input id="eid" size="36" placeholder="GUID"/></label>
+      <label>Token <input id="tok" size="28" placeholder="JWT (opcional)"/></label>
+      <button id="btnLoad">Cargar</button>
+      <button id="btnTheme">Tema</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="actions">
+      <input id="q" placeholder="Buscar ID/Nombre/Rep/Apoderado" size="40"/>
+      <select id="att">
+        <option value="">Todos</option>
+        <option>Presencial</option>
+        <option>Virtual</option>
+        <option>None</option>
+      </select>
+      <button id="btnSearch">Buscar</button>
+      <span class="muted" id="count"></span>
+    </div>
+    <div class="actions">
+      <button data-att="Presencial">Marcar página Presencial</button>
+      <button data-att="Virtual">Marcar página Virtual</button>
+      <button data-att="None">Marcar página Ausente</button>
+      <button id="btnAllP">Marcar TODOS Presencial</button>
+    </div>
+    <table>
+      <thead><tr><th>ID</th><th>Nombre</th><th>Rep. Legal</th><th>Apoderado</th><th>Acciones</th><th>Asistencia</th><th>Acta</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="actions">
+      <button id="prev">&lt; Prev</button>
+      <span id="page" class="badge">1</span>
+      <button id="next">Next &gt;</button>
+    </div>
+  </div>
+  <script>
+    const eid = document.getElementById('eid');
+    const tok = document.getElementById('tok');
+    const btnLoad = document.getElementById('btnLoad');
+    const btnTheme = document.getElementById('btnTheme');
+    const rows = document.getElementById('rows');
+    const status = document.getElementById('status');
+    const count = document.getElementById('count');
+    const q = document.getElementById('q');
+    const att = document.getElementById('att');
+    const btnSearch = document.getElementById('btnSearch');
+    const badgePage = document.getElementById('page');
+    const prev = document.getElementById('prev');
+    const next = document.getElementById('next');
+    const btnAllP = document.getElementById('btnAllP');
+
+    let current = { id:null, page:1, pageSize:20, items:[] };
+    btnTheme.onclick = ()=>{ const root=document.documentElement; root.setAttribute('data-theme', root.getAttribute('data-theme')==='dark'?'light':'dark'); };
+    function auth(){ const t=tok.value.trim(); return t? { 'Authorization':'Bearer '+t } : {}; }
+    function setStatus(s){ status.textContent=s; }
+
+    async function load(){
+      const id = eid.value.trim(); if(!id){ alert('Ingresa ElectionId'); return; }
+      current.id=id;
+      await search();
+    }
+
+    async function search(){
+      const params = new URLSearchParams({ page: current.page, pageSize: current.pageSize });
+      if(q.value.trim()) params.set('q', q.value.trim());
+      if(att.value) params.set('attendance', att.value);
+      const r = await fetch(`/api/elections/${current.id}/padron?`+params.toString(), { headers: auth() });
+      if(!r.ok){ setStatus('Error al cargar padrón'); return; }
+      const data = await r.json();
+      current.items = data.Items || [];
+      count.textContent = `Total: ${data.Total}`;
+      badgePage.textContent = String(current.page);
+      rows.innerHTML = current.items.map(p=>`<tr>
+        <td>${p.ShareholderId}</td>
+        <td>${p.ShareholderName}</td>
+        <td>${p.LegalRepresentative||''}</td>
+        <td>${p.Proxy||''}</td>
+        <td>${p.Shares}</td>
+        <td>${p.Attendance}</td>
+        <td>${p.HasActa? 'Sí':'No'}</td>
+      </tr>`).join('');
+      setStatus('Padrón cargado');
+    }
+
+    async function mark(ids, value){
+      const body = ids && ids.length? { attendance:value, ids, reason:`Marcación ${value} (página)` } : { attendance:value, reason:`Marcación ${value} (global)` };
+      const r = await fetch(`/api/elections/${current.id}/attendance/batch`, { method:'POST', headers:{'Content-Type':'application/json', ...auth()}, body: JSON.stringify(body) });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); alert('Error: '+(e.error||r.status)); return; }
+      await search();
+    }
+
+    btnSearch.onclick = ()=>{ current.page=1; search(); };
+    prev.onclick = ()=>{ if(current.page>1){ current.page--; search(); } };
+    next.onclick = ()=>{ current.page++; search(); };
+    btnAllP.onclick = ()=> mark(null, 'Presencial');
+    document.querySelectorAll('button[data-att]')[0].onclick = ()=> mark(current.items.map(x=>x.Id),'Presencial');
+    document.querySelectorAll('button[data-att]')[1].onclick = ()=> mark(current.items.map(x=>x.Id),'Virtual');
+    document.querySelectorAll('button[data-att]')[2].onclick = ()=> mark(current.items.map(x=>x.Id),'None');
+    btnLoad.onclick = load;
+  </script>
+</body>
+</html>
+

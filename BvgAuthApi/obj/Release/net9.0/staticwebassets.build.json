@@ -1,12 +1,1042 @@
 {
   "Version": 1,
-  "Hash": "tOYKaEWXYVPTKNuQ+QvBXYG5Fr49bt51T0yHjAb1Ujk=",
+  "Hash": "BJNjPbgIONgX9QGA+iyfDvDhTHcpJPOX/kqCmRE1GIk=",
   "Source": "BvgAuthApi",
   "BasePath": "_content/BvgAuthApi",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
-  "Assets": [],
-  "Endpoints": []
+  "DiscoveryPatterns": [
+    {
+      "Name": "BvgAuthApi\\wwwroot",
+      "Source": "BvgAuthApi",
+      "ContentRoot": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\",
+      "BasePath": "_content/BvgAuthApi",
+      "Pattern": "**"
+    }
+  ],
+  "Assets": [
+    {
+      "Identity": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fia8mkvdtm-vu2pylglj8.gz",
+      "SourceId": "BvgAuthApi",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\",
+      "BasePath": "_content/BvgAuthApi",
+      "RelativePath": "samples/dashboard#[.{fingerprint=vu2pylglj8}]?.html.gz",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Alternative",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\dashboard.html",
+      "AssetTraitName": "Content-Encoding",
+      "AssetTraitValue": "gzip",
+      "Fingerprint": "jbgkrxssom",
+      "Integrity": "n262puruiTFY6f8+NySJpJJxeItH2WOX1A1o7ZOKNok=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\dashboard.html"
+    },
+    {
+      "Identity": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fnc2whomz8-x9q8vo6dcn.gz",
+      "SourceId": "BvgAuthApi",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\",
+      "BasePath": "_content/BvgAuthApi",
+      "RelativePath": "samples/kiosk#[.{fingerprint=x9q8vo6dcn}]?.html.gz",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Alternative",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\kiosk.html",
+      "AssetTraitName": "Content-Encoding",
+      "AssetTraitValue": "gzip",
+      "Fingerprint": "0fq84se738",
+      "Integrity": "RLTf7GmWRdn6MAGuseg8NmRMNZt4AZ123Y5WEdgTSro=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\kiosk.html"
+    },
+    {
+      "Identity": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\gtv46384ny-0akg6oilz7.gz",
+      "SourceId": "BvgAuthApi",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\",
+      "BasePath": "_content/BvgAuthApi",
+      "RelativePath": "samples/padron#[.{fingerprint=0akg6oilz7}]?.html.gz",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Alternative",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\padron.html",
+      "AssetTraitName": "Content-Encoding",
+      "AssetTraitValue": "gzip",
+      "Fingerprint": "stohgphi7m",
+      "Integrity": "EMQv9ad32knCZyJFlnei8RG0C7au18iK8mINx0d+XsQ=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\padron.html"
+    },
+    {
+      "Identity": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\dashboard.html",
+      "SourceId": "BvgAuthApi",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\",
+      "BasePath": "_content/BvgAuthApi",
+      "RelativePath": "samples/dashboard#[.{fingerprint}]?.html",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "vu2pylglj8",
+      "Integrity": "t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\samples\\dashboard.html"
+    },
+    {
+      "Identity": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\kiosk.html",
+      "SourceId": "BvgAuthApi",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\",
+      "BasePath": "_content/BvgAuthApi",
+      "RelativePath": "samples/kiosk#[.{fingerprint}]?.html",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "x9q8vo6dcn",
+      "Integrity": "+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\samples\\kiosk.html"
+    },
+    {
+      "Identity": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\padron.html",
+      "SourceId": "BvgAuthApi",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\",
+      "BasePath": "_content/BvgAuthApi",
+      "RelativePath": "samples/padron#[.{fingerprint}]?.html",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "0akg6oilz7",
+      "Integrity": "qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\samples\\padron.html"
+    }
+  ],
+  "Endpoints": [
+    {
+      "Route": "samples/dashboard.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fia8mkvdtm-vu2pylglj8.gz",
+      "Selectors": [
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip",
+          "Quality": "0.000375234522"
+        }
+      ],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2664"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"n262puruiTFY6f8+NySJpJJxeItH2WOX1A1o7ZOKNok=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 17:22:04 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "W/\"t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8=\""
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8="
+        }
+      ]
+    },
+    {
+      "Route": "samples/dashboard.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\dashboard.html",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "6886"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 17:22:04 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8="
+        }
+      ]
+    },
+    {
+      "Route": "samples/dashboard.html.gz",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fia8mkvdtm-vu2pylglj8.gz",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2664"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"n262puruiTFY6f8+NySJpJJxeItH2WOX1A1o7ZOKNok=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 17:22:04 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-n262puruiTFY6f8+NySJpJJxeItH2WOX1A1o7ZOKNok="
+        }
+      ]
+    },
+    {
+      "Route": "samples/dashboard.vu2pylglj8.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fia8mkvdtm-vu2pylglj8.gz",
+      "Selectors": [
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip",
+          "Quality": "0.000375234522"
+        }
+      ],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2664"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"n262puruiTFY6f8+NySJpJJxeItH2WOX1A1o7ZOKNok=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 17:22:04 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "W/\"t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8=\""
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "vu2pylglj8"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/dashboard.html"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8="
+        }
+      ]
+    },
+    {
+      "Route": "samples/dashboard.vu2pylglj8.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\dashboard.html",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "6886"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 17:22:04 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "vu2pylglj8"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/dashboard.html"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-t/BnufIGAgxjhFkO+mvEOKS4V8fivpH3J9+jmsnGIm8="
+        }
+      ]
+    },
+    {
+      "Route": "samples/dashboard.vu2pylglj8.html.gz",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fia8mkvdtm-vu2pylglj8.gz",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2664"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"n262puruiTFY6f8+NySJpJJxeItH2WOX1A1o7ZOKNok=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 17:22:04 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "vu2pylglj8"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/dashboard.html.gz"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-n262puruiTFY6f8+NySJpJJxeItH2WOX1A1o7ZOKNok="
+        }
+      ]
+    },
+    {
+      "Route": "samples/kiosk.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fnc2whomz8-x9q8vo6dcn.gz",
+      "Selectors": [
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip",
+          "Quality": "0.000597371565"
+        }
+      ],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "1673"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"RLTf7GmWRdn6MAGuseg8NmRMNZt4AZ123Y5WEdgTSro=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:45:29 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "W/\"+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI=\""
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI="
+        }
+      ]
+    },
+    {
+      "Route": "samples/kiosk.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\kiosk.html",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "4450"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:45:29 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI="
+        }
+      ]
+    },
+    {
+      "Route": "samples/kiosk.html.gz",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fnc2whomz8-x9q8vo6dcn.gz",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "1673"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"RLTf7GmWRdn6MAGuseg8NmRMNZt4AZ123Y5WEdgTSro=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:45:29 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-RLTf7GmWRdn6MAGuseg8NmRMNZt4AZ123Y5WEdgTSro="
+        }
+      ]
+    },
+    {
+      "Route": "samples/kiosk.x9q8vo6dcn.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fnc2whomz8-x9q8vo6dcn.gz",
+      "Selectors": [
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip",
+          "Quality": "0.000597371565"
+        }
+      ],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "1673"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"RLTf7GmWRdn6MAGuseg8NmRMNZt4AZ123Y5WEdgTSro=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:45:29 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "W/\"+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI=\""
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "x9q8vo6dcn"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/kiosk.html"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI="
+        }
+      ]
+    },
+    {
+      "Route": "samples/kiosk.x9q8vo6dcn.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\kiosk.html",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "4450"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:45:29 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "x9q8vo6dcn"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/kiosk.html"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-+0lUoxMQ9lnLtR/HJWnnWIJIQFXXtPtTzfykPOHW+oI="
+        }
+      ]
+    },
+    {
+      "Route": "samples/kiosk.x9q8vo6dcn.html.gz",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\fnc2whomz8-x9q8vo6dcn.gz",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "1673"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"RLTf7GmWRdn6MAGuseg8NmRMNZt4AZ123Y5WEdgTSro=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:45:29 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "x9q8vo6dcn"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/kiosk.html.gz"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-RLTf7GmWRdn6MAGuseg8NmRMNZt4AZ123Y5WEdgTSro="
+        }
+      ]
+    },
+    {
+      "Route": "samples/padron.0akg6oilz7.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\gtv46384ny-0akg6oilz7.gz",
+      "Selectors": [
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip",
+          "Quality": "0.000443458980"
+        }
+      ],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2254"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"EMQv9ad32knCZyJFlnei8RG0C7au18iK8mINx0d+XsQ=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:43:00 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "W/\"qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg=\""
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "0akg6oilz7"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/padron.html"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg="
+        }
+      ]
+    },
+    {
+      "Route": "samples/padron.0akg6oilz7.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\padron.html",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "6091"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:43:00 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "0akg6oilz7"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/padron.html"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg="
+        }
+      ]
+    },
+    {
+      "Route": "samples/padron.0akg6oilz7.html.gz",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\gtv46384ny-0akg6oilz7.gz",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2254"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"EMQv9ad32knCZyJFlnei8RG0C7au18iK8mINx0d+XsQ=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:43:00 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "0akg6oilz7"
+        },
+        {
+          "Name": "label",
+          "Value": "samples/padron.html.gz"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-EMQv9ad32knCZyJFlnei8RG0C7au18iK8mINx0d+XsQ="
+        }
+      ]
+    },
+    {
+      "Route": "samples/padron.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\gtv46384ny-0akg6oilz7.gz",
+      "Selectors": [
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip",
+          "Quality": "0.000443458980"
+        }
+      ],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2254"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"EMQv9ad32knCZyJFlnei8RG0C7au18iK8mINx0d+XsQ=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:43:00 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "W/\"qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg=\""
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg="
+        }
+      ]
+    },
+    {
+      "Route": "samples/padron.html",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\padron.html",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "6091"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:43:00 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-qFAuT4OBbARxW4kiliMZqHYWhPiqopkM6z6Rwerq9pg="
+        }
+      ]
+    },
+    {
+      "Route": "samples/padron.html.gz",
+      "AssetFile": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\Release\\net9.0\\compressed\\gtv46384ny-0akg6oilz7.gz",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2254"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/html"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"EMQv9ad32knCZyJFlnei8RG0C7au18iK8mINx0d+XsQ=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 05 Sep 2025 18:43:00 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-EMQv9ad32knCZyJFlnei8RG0C7au18iK8mINx0d+XsQ="
+        }
+      ]
+    }
+  ]
 }

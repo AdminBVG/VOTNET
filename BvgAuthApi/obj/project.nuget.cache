@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "8p95CJRfyVQ=",
+  "dgSpecHash": "pMUPLUUj6v8=",
   "success": true,
-  "projectFilePath": "C:\\PROYECTOS\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj",
+  "projectFilePath": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\afigueroa\\.nuget\\packages\\epplus\\6.2.0\\epplus.6.2.0.nupkg.sha512",
     "C:\\Users\\afigueroa\\.nuget\\packages\\epplus.interfaces\\6.1.1\\epplus.interfaces.6.1.1.nupkg.sha512",
@@ -58,6 +58,11 @@
     "C:\\Users\\afigueroa\\.nuget\\packages\\mono.texttemplating\\3.0.0\\mono.texttemplating.3.0.0.nupkg.sha512",
     "C:\\Users\\afigueroa\\.nuget\\packages\\npgsql\\9.0.3\\npgsql.9.0.3.nupkg.sha512",
     "C:\\Users\\afigueroa\\.nuget\\packages\\npgsql.entityframeworkcore.postgresql\\9.0.4\\npgsql.entityframeworkcore.postgresql.9.0.4.nupkg.sha512",
+    "C:\\Users\\afigueroa\\.nuget\\packages\\qrcoder\\1.4.3\\qrcoder.1.4.3.nupkg.sha512",
+    "C:\\Users\\afigueroa\\.nuget\\packages\\questpdf\\2024.7.2\\questpdf.2024.7.2.nupkg.sha512",
+    "C:\\Users\\afigueroa\\.nuget\\packages\\skiasharp\\2.88.8\\skiasharp.2.88.8.nupkg.sha512",
+    "C:\\Users\\afigueroa\\.nuget\\packages\\skiasharp.nativeassets.macos\\2.88.8\\skiasharp.nativeassets.macos.2.88.8.nupkg.sha512",
+    "C:\\Users\\afigueroa\\.nuget\\packages\\skiasharp.nativeassets.win32\\2.88.8\\skiasharp.nativeassets.win32.2.88.8.nupkg.sha512",
     "C:\\Users\\afigueroa\\.nuget\\packages\\swashbuckle.aspnetcore\\9.0.3\\swashbuckle.aspnetcore.9.0.3.nupkg.sha512",
     "C:\\Users\\afigueroa\\.nuget\\packages\\swashbuckle.aspnetcore.swagger\\9.0.3\\swashbuckle.aspnetcore.swagger.9.0.3.nupkg.sha512",
     "C:\\Users\\afigueroa\\.nuget\\packages\\swashbuckle.aspnetcore.swaggergen\\9.0.3\\swashbuckle.aspnetcore.swaggergen.9.0.3.nupkg.sha512",

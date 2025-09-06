@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\PROYECTOS\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj": {}
+    "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj": {}
   },
   "projects": {
-    "C:\\PROYECTOS\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj": {
+    "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\PROYECTOS\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj",
+        "projectUniqueName": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj",
         "projectName": "BvgAuthApi",
-        "projectPath": "C:\\PROYECTOS\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj",
+        "projectPath": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\BvgAuthApi.csproj",
         "packagesPath": "C:\\Users\\afigueroa\\.nuget\\packages\\",
-        "outputPath": "C:\\PROYECTOS\\VOTNET\\BvgAuthApi\\obj\\",
+        "outputPath": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -71,6 +71,10 @@
               "target": "Package",
               "version": "[9.*, )"
             },
+            "Microsoft.IdentityModel.Protocols.OpenIdConnect": {
+              "target": "Package",
+              "version": "[8.0.1, )"
+            },
             "Microsoft.OpenApi": {
               "target": "Package",
               "version": "[1.6.23, )"
@@ -78,6 +82,18 @@
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
               "version": "[9.0.4, )"
+            },
+            "QRCoder": {
+              "target": "Package",
+              "version": "[1.4.3, )"
+            },
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2024.7.2, )"
+            },
+            "SkiaSharp": {
+              "target": "Package",
+              "version": "[2.88.8, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",

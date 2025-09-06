@@ -17,6 +17,178 @@ namespace BvgAuthApi.Endpoints
         public static IEndpointRouteBuilder MapElections(this IEndpointRouteBuilder app)
         {
             var g = app.MapGroup("/api/elections");
+            // Estado actual + acciones permitidas
+            g.MapGet("/{id}/status", async (Guid id, BvgDbContext db) =>
+            {
+                var e = await db.Elections.Include(x => x.Padron).FirstOrDefaultAsync(x => x.Id == id);
+                if (e is null) return Results.Json(new { error = "election_not_found" }, statusCode: 404);
+                var flags = await db.ElectionFlags.FirstOrDefaultAsync(x => x.ElectionId == id);
+                var totalShares = e.Padron.Sum(p => p.Shares);
+                var presentShares = e.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
+                var status = e.Status.ToString();
+                bool CanOpenReg = e.Status == ElectionStatus.Draft;
+                bool CanCloseReg = e.Status == ElectionStatus.RegistrationOpen;
+                bool CanOpenVote = e.Status == ElectionStatus.RegistrationClosed;
+                bool CanCloseVote = e.Status == ElectionStatus.VotingOpen;
+                bool CanCertify = e.Status == ElectionStatus.VotingClosed;
+                bool CanReopenReg = e.Status == ElectionStatus.RegistrationClosed;
+                return Results.Ok(new {
+                    e.Id,
+                    Status = status,
+                    Locked = flags?.AttendanceClosed == true,
+                    e.QuorumMinimo,
+                    Shares = new { Total = totalShares, Present = presentShares },
+                    Actions = new { CanOpenReg, CanCloseReg, CanOpenVote, CanCloseVote, CanCertify, CanReopenReg }
+                });
+            }).RequireAuthorization();
+            // Estado de elección: transiciones y reglas
+            g.MapPost("/{id}/status/open-registration", async (Guid id, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
+                var e = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                if (e is null) return Err("election_not_found", 404);
+                if (e.Status != ElectionStatus.Draft) return Err("invalid_state", 400);
+                e.Status = ElectionStatus.RegistrationOpen;
+                e.RegistrationOpenedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var f = await db.ElectionFlags.FirstOrDefaultAsync(x => x.ElectionId == id);
+                if (f is null) { f = new ElectionFlag { ElectionId = id, AttendanceClosed = false }; db.ElectionFlags.Add(f); } else f.AttendanceClosed = false;
+                await db.SaveChangesAsync();
+                await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
+                await hub.Clients.Group($"election-{id}").SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = false });
+                return Results.Ok(new { e.Status });
+            }).RequireAuthorization();
+
+            g.MapPost("/{id}/status/close-registration", async (Guid id, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            {
+                static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+                if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
+                var e = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                if (e is null) return Err("election_not_found", 404);
+                if (e.Status != ElectionStatus.RegistrationOpen) return Err("invalid_state", 400);
+                var confirm = body.TryGetProperty("confirm", out var c) && c.ValueKind == JsonValueKind.True;
+                if (!confirm) return Err("confirm_required", 409, new { action = "close-registration" });
+                e.Status = ElectionStatus.RegistrationClosed;
+                e.RegistrationClosedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var f = await db.ElectionFlags.FirstOrDefaultAsync(x => x.ElectionId == id);
+                if (f is null) { f = new ElectionFlag { ElectionId = id, AttendanceClosed = true }; db.ElectionFlags.Add(f); } else f.AttendanceClosed = true;
+                await db.SaveChangesAsync();
+                await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
+                await hub.Clients.Group($"election-{id}").SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = true });
+
+                // Auto abrir votación si ya se alcanzó quórum mínimo
+                var totalShares = await db.Padron.Where(p => p.ElectionId == id).SumAsync(p => p.Shares);
+                var presentShares = await db.Padron.Where(p => p.ElectionId == id && p.Attendance != AttendanceType.None).SumAsync(p => p.Shares);
+                var ratio = totalShares == 0 ? 0 : presentShares / (totalShares == 0 ? 1 : totalShares);
+                if (e.Status == ElectionStatus.RegistrationClosed && ratio >= e.QuorumMinimo)
+                {
+                    e.Status = ElectionStatus.VotingOpen;
+                    e.VotingOpenedAt = DateTimeOffset.UtcNow;
+                    e.LastStatusChangedAt = DateTimeOffset.UtcNow;
+                    e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                    await db.SaveChangesAsync();
+                    await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
+                }
+                return Results.Ok(new { e.Status });
+            }).RequireAuthorization();
+
+            // Re-abrir registro (solo si estaba cerrado y no se abrió votación)
+            g.MapPost("/{id}/status/reopen-registration", async (Guid id, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            {
+                static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+                if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
+                var e = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                if (e is null) return Err("election_not_found", 404);
+                if (e.Status != ElectionStatus.RegistrationClosed) return Err("invalid_state", 400);
+                var confirm = body.TryGetProperty("confirm", out var c) && c.ValueKind == JsonValueKind.True;
+                if (!confirm) return Err("confirm_required", 409, new { action = "reopen-registration" });
+                e.Status = ElectionStatus.RegistrationOpen;
+                e.RegistrationOpenedAt ??= DateTimeOffset.UtcNow;
+                e.LastStatusChangedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var f = await db.ElectionFlags.FirstOrDefaultAsync(x => x.ElectionId == id);
+                if (f is null) { f = new ElectionFlag { ElectionId = id, AttendanceClosed = false }; db.ElectionFlags.Add(f); } else f.AttendanceClosed = false;
+                await db.SaveChangesAsync();
+                await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
+                await hub.Clients.Group($"election-{id}").SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = false });
+                return Results.Ok(new { e.Status });
+            }).RequireAuthorization();
+
+            g.MapPost("/{id}/status/open-voting", async (Guid id, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            {
+                static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+                if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
+                var e = await db.Elections.Include(x => x.Padron).FirstOrDefaultAsync(x => x.Id == id);
+                if (e is null) return Err("election_not_found", 404);
+                if (e.Status != ElectionStatus.RegistrationClosed) return Err("invalid_state", 400);
+                var totalShares = e.Padron.Sum(p => p.Shares);
+                var presentShares = e.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
+                var ratio = totalShares == 0 ? 0 : presentShares / (totalShares == 0 ? 1 : totalShares);
+                if (ratio < e.QuorumMinimo) return Err("quorum_not_met", 400, new { TotalShares = totalShares, PresentShares = presentShares, Ratio = ratio, QuorumMinimo = e.QuorumMinimo });
+                e.Status = ElectionStatus.VotingOpen;
+                e.VotingOpenedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                await db.SaveChangesAsync();
+                await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
+                return Results.Ok(new { e.Status });
+            }).RequireAuthorization();
+
+            g.MapPost("/{id}/status/close-voting", async (Guid id, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            {
+                static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+                if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
+                var e = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                if (e is null) return Err("election_not_found", 404);
+                if (e.Status != ElectionStatus.VotingOpen) return Err("invalid_state", 400);
+                var confirm = body.TryGetProperty("confirm", out var c) && c.ValueKind == JsonValueKind.True;
+                if (!confirm) return Err("confirm_required", 409, new { action = "close-voting" });
+                e.Status = ElectionStatus.VotingClosed;
+                e.VotingClosedAt = DateTimeOffset.UtcNow;
+                e.IsClosed = true;
+                e.LastStatusChangedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                await db.SaveChangesAsync();
+                await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
+                return Results.Ok(new { e.Status });
+            }).RequireAuthorization();
+
+            g.MapPost("/{id}/status/certify", async (Guid id, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            {
+                static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+                if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
+                var e = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                if (e is null) return Err("election_not_found", 404);
+                if (e.Status != ElectionStatus.VotingClosed) return Err("invalid_state", 400);
+                var confirm = body.TryGetProperty("confirm", out var c) && c.ValueKind == JsonValueKind.True;
+                if (!confirm) return Err("confirm_required", 409, new { action = "certify" });
+                e.Status = ElectionStatus.Certified;
+                e.CertifiedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedAt = DateTimeOffset.UtcNow;
+                e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                await db.SaveChangesAsync();
+                await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
+                return Results.Ok(new { e.Status });
+            }).RequireAuthorization();
+            g.MapGet("/{id}/dashboard", async (Guid id, BvgAuthApi.Services.MetricsService metrics, BvgDbContext db, ClaimsPrincipal user) =>
+            {
+                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
+                // Same auth model: admins or per-election assignment
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+                if (!isAdmin)
+                {
+                    var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId &&
+                        (a.Role == AppRoles.AttendanceRegistrar || a.Role == AppRoles.VoteRegistrar || a.Role == AppRoles.ElectionObserver));
+                    if (!hasAssign) return Err("forbidden", 403);
+                }
+                var data = await metrics.ComputeDashboard(id);
+                return Results.Ok(data);
+            }).RequireAuthorization().DisableAntiforgery();
 
             // Excel template for Padron upload
             g.MapGet("/padron-template", () =>
@@ -135,6 +307,8 @@ namespace BvgAuthApi.Endpoints
 
                 var election = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
                 if (election is null) return Err("election_not_found", 404);
+                if (election.Status == ElectionStatus.RegistrationClosed || election.Status == ElectionStatus.VotingOpen || election.Status == ElectionStatus.VotingClosed || election.Status == ElectionStatus.Certified)
+                    return Err("padron_locked", 400);
 
                 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
                 using var ms = new MemoryStream();
@@ -167,6 +341,49 @@ namespace BvgAuthApi.Endpoints
                 }
                 await db.SaveChangesAsync();
                 return Results.Ok();
+            }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
+
+            // Preview Padron upload (no persist): validates and returns errors/sample
+            g.MapPost("/{id}/padron/preview", async (Guid id, IFormFile file, BvgDbContext db) =>
+            {
+                static IResult Err(string code, int status, object? details = null)
+                    => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+                const long maxFileSize = 5 * 1024 * 1024; // 5MB
+                const int maxRows = 5000;
+                if (file.Length == 0 || file.Length > maxFileSize) return Err("invalid_file_size", 400);
+
+                var election = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                if (election is null) return Err("election_not_found", 404);
+                if (election.Status == ElectionStatus.RegistrationClosed || election.Status == ElectionStatus.VotingOpen || election.Status == ElectionStatus.VotingClosed || election.Status == ElectionStatus.Certified)
+                    return Err("padron_locked", 400);
+
+                OfficeOpenXml.ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
+                using var ms = new MemoryStream();
+                await file.CopyToAsync(ms);
+                ms.Position = 0;
+                using var pkg = new OfficeOpenXml.ExcelPackage(ms);
+                var ws = pkg.Workbook.Worksheets.First();
+
+                var preview = new List<object>();
+                var errors = new List<object>();
+                var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                for (int row = 2; ws.Cells[row,1].Value != null; row++)
+                {
+                    if (row - 1 > maxRows) { errors.Add(new { row, error = "too_many_rows" }); break; }
+                    var idCell = ws.Cells[row,1].Text?.Trim();
+                    var name = ws.Cells[row,2].Text?.Trim();
+                    var rep = ws.Cells[row,3].Text?.Trim();
+                    var proxy = ws.Cells[row,4].Text?.Trim();
+                    var sharesText = ws.Cells[row,5].Text?.Trim();
+                    if (string.IsNullOrWhiteSpace(idCell) || string.IsNullOrWhiteSpace(name))
+                        errors.Add(new { row, error = "missing_required" });
+                    if (!decimal.TryParse(sharesText, out var shares) || shares < 0)
+                        errors.Add(new { row, error = "invalid_shares" });
+                    if (!string.IsNullOrWhiteSpace(idCell) && !seenIds.Add(idCell))
+                        errors.Add(new { row, error = "duplicate_id" });
+                    preview.Add(new { ShareholderId = idCell, ShareholderName = name, LegalRepresentative = rep, Proxy = proxy, Shares = sharesText });
+                }
+                return Results.Ok(new { Count = preview.Count, Errors = errors, Sample = preview.Take(10) });
             }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin));
 
             g.MapPost("/{id}/assignments", async (Guid id, [FromBody] AssignmentDto dto, BvgDbContext db) =>
@@ -236,16 +453,31 @@ namespace BvgAuthApi.Endpoints
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.AttendanceRegistrar))
                     return Err("forbidden", 403);
+                var flags = await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id);
                 var election = await db.Elections.Include(e => e.Padron).FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
                 if (election.IsClosed) return Err("election_closed", 400);
+                if (election.Status != ElectionStatus.RegistrationOpen) return Err("attendance_not_allowed", 400);
+                if (flags?.AttendanceClosed == true) return Err("attendance_closed", 400);
                 var padron = election.Padron.FirstOrDefault(p => p.Id == padronId);
                 if (padron is null) return Err("padron_entry_not_found", 404);
                 padron.Attendance = dto.Attendance;
                 await db.SaveChangesAsync();
-                var total = election.Padron.Sum(p => p.Shares);
-                var present = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
-                await hub.Clients.All.SendAsync("quorumUpdated", new { ElectionId = id, Total = total, Present = present });
+                // Broadcast richer summary and metrics
+                var totalShares = election.Padron.Sum(p => p.Shares);
+                var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
+                var quorum = totalShares == 0 ? 0 : presentShares / totalShares;
+                var quorumOk = totalShares > 0 && quorum >= election.QuorumMinimo;
+                await hub.Clients.Group($"election-{id}").SendAsync("attendanceUpdated", new { ElectionId = id, PadronId = padronId, Attendance = padron.Attendance.ToString() });
+                await hub.Clients.Group($"election-{id}").SendAsync("quorumUpdated", new { ElectionId = id, TotalShares = totalShares, PresentShares = presentShares, Quorum = quorum, Achieved = quorumOk });
+                var total = election.Padron.Count;
+                var presencial = election.Padron.Count(p => p.Attendance == AttendanceType.Presencial);
+                var @virtual = election.Padron.Count(p => p.Attendance == AttendanceType.Virtual);
+                var ausente = election.Padron.Count(p => p.Attendance == AttendanceType.None);
+                await hub.Clients.Group($"election-{id}").SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = false, QuorumMin = election.QuorumMinimo });
+                var metrics = new BvgAuthApi.Services.MetricsService(db);
+                var data = await metrics.ComputeDashboard(id);
+                await hub.Clients.Group($"election-{id}").SendAsync("metricsUpdated", data);
                 return Results.Ok();
             }).RequireAuthorization();
 
@@ -274,6 +506,9 @@ namespace BvgAuthApi.Endpoints
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.AttendanceRegistrar))
                     return Err("forbidden", 403);
                 var flags = await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id);
+                var e = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                if (e is null) return Err("election_not_found", 404);
+                if (e.Status != ElectionStatus.RegistrationOpen) return Err("attendance_not_allowed", 400);
                 if (flags?.AttendanceClosed == true) return Err("attendance_closed", 400);
                 // Parse attendance from body (accept string or number)
                 if (!body.TryGetProperty("attendance", out var attProp)) return Err("missing_attendance", 400);
@@ -305,6 +540,7 @@ namespace BvgAuthApi.Endpoints
                 var q = db.Padron.Where(p => p.ElectionId == id);
                 if (idsFilter.Count > 0) q = q.Where(p => idsFilter.Contains(p.Id));
                 var list = await q.ToListAsync();
+                var reason = body.TryGetProperty("reason", out var reasonProp) && reasonProp.ValueKind == JsonValueKind.String ? reasonProp.GetString() : null;
                 foreach (var entry in list)
                 {
                     if (entry.Attendance != newAtt)
@@ -317,7 +553,8 @@ namespace BvgAuthApi.Endpoints
                             PadronEntryId = entry.Id,
                             OldAttendance = old,
                             NewAttendance = entry.Attendance,
-                            UserId = userId
+                            UserId = userId,
+                            Reason = reason
                         });
                     }
                 }
@@ -333,8 +570,13 @@ namespace BvgAuthApi.Endpoints
                     var totalShares = election.Padron.Sum(p => p.Shares);
                     var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                     var locked = (await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id))?.AttendanceClosed == true;
-                    await hub.Clients.All.SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = locked, QuorumMin = election.QuorumMinimo });
-                    await hub.Clients.All.SendAsync("quorumUpdated", new { ElectionId = id, TotalShares = totalShares, PresentShares = presentShares, Quorum = totalShares == 0 ? 0 : presentShares / totalShares });
+                    var quorum = totalShares == 0 ? 0 : presentShares / totalShares;
+                    var quorumOk = totalShares > 0 && quorum >= election.QuorumMinimo;
+                    await hub.Clients.Group($"election-{id}").SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = locked, QuorumMin = election.QuorumMinimo });
+                    await hub.Clients.Group($"election-{id}").SendAsync("quorumUpdated", new { ElectionId = id, TotalShares = totalShares, PresentShares = presentShares, Quorum = quorum, Achieved = quorumOk });
+                    var metrics = new BvgAuthApi.Services.MetricsService(db);
+                    var data = await metrics.ComputeDashboard(id);
+                    await hub.Clients.Group($"election-{id}").SendAsync("metricsUpdated", data);
                 }
                 return Results.Ok();
             }).RequireAuthorization().DisableAntiforgery();
@@ -513,12 +755,14 @@ namespace BvgAuthApi.Endpoints
                     .FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
                 if (election.IsClosed) return Err("election_closed", 400);
+                if (election.Status != ElectionStatus.VotingOpen) return Err("voting_not_open", 400);
                 var total = election.Padron.Sum(p => p.Shares);
                 var present = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                 if (total == 0 || present / total < election.QuorumMinimo)
                     return Err("quorum_not_met", 400);
                 var padron = election.Padron.FirstOrDefault(p => p.Id == dto.PadronId);
                 if (padron is null) return Err("padron_not_found", 400);
+                if (padron.Attendance == AttendanceType.None) return Err("padron_not_present", 400);
                 var question = election.Questions.FirstOrDefault(q => q.Id == dto.QuestionId);
                 if (question is null) return Err("question_not_found", 400);
                 if (!question.Options.Any(o => o.Id == dto.OptionId)) return Err("option_not_found", 400);
@@ -552,6 +796,7 @@ namespace BvgAuthApi.Endpoints
                     .FirstOrDefaultAsync(e => e.Id == id);
                 if (election is null) return Err("election_not_found", 404);
                 if (election.IsClosed) return Err("election_closed", 400);
+                if (election.Status != ElectionStatus.VotingOpen) return Err("voting_not_open", 400);
                 var total = election.Padron.Sum(p => p.Shares);
                 var present = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                 if (total == 0 || present / total < election.QuorumMinimo)
@@ -562,6 +807,7 @@ namespace BvgAuthApi.Endpoints
                 foreach (var v in dto.Votes)
                 {
                     if (!election.Padron.Any(p => p.Id == v.PadronId)) return Err("padron_not_found", 400);
+                    if (election.Padron.First(p => p.Id == v.PadronId).Attendance == AttendanceType.None) return Err("padron_not_present", 400);
                     var q = election.Questions.FirstOrDefault(q => q.Id == v.QuestionId);
                     if (q is null) return Err("question_not_found", 400);
                     if (!q.Options.Any(o => o.Id == v.OptionId)) return Err("option_not_found", 400);
@@ -578,7 +824,11 @@ namespace BvgAuthApi.Endpoints
                 }
                 await db.SaveChangesAsync();
                 foreach (var v in dto.Votes)
-                    await hub.Clients.All.SendAsync("voteRegistered", new { ElectionId = id, QuestionId = v.QuestionId, OptionId = v.OptionId });
+                    await hub.Clients.Group($"election-{id}").SendAsync("voteRegistered", new { ElectionId = id, QuestionId = v.QuestionId, OptionId = v.OptionId });
+                // Broadcast metrics update to election group
+                var metrics = new BvgAuthApi.Services.MetricsService(db);
+                var data = await metrics.ComputeDashboard(id);
+                await hub.Clients.Group($"election-{id}").SendAsync("metricsUpdated", data);
                 return Results.Ok(new { Count = dto.Votes.Count });
             }).RequireAuthorization();
 
@@ -622,17 +872,19 @@ namespace BvgAuthApi.Endpoints
                 if (entry is null) return Err("padron_entry_not_found", 404);
                 var oldAtt = entry.Attendance;
                 entry.Attendance = newAtt;
+                var reason = body.TryGetProperty("reason", out var reasonProp) && reasonProp.ValueKind == JsonValueKind.String ? reasonProp.GetString() : null;
                 db.AttendanceLogs.Add(new AttendanceLog
                 {
                     ElectionId = id,
                     PadronEntryId = padronId,
                     OldAttendance = oldAtt,
                     NewAttendance = entry.Attendance,
-                    UserId = userId
+                    UserId = userId,
+                    Reason = reason
                 });
                 await db.SaveChangesAsync();
                 // Broadcast per-row update and quorum summary (optional)
-                await hub.Clients.All.SendAsync("attendanceUpdated", new { ElectionId = id, PadronId = padronId, Attendance = entry.Attendance.ToString() });
+                await hub.Clients.Group($"election-{id}").SendAsync("attendanceUpdated", new { ElectionId = id, PadronId = padronId, Attendance = entry.Attendance.ToString() });
                 var election = await db.Elections.Include(e => e.Padron).FirstOrDefaultAsync(e => e.Id == id);
                 if (election is not null)
                 {
@@ -643,8 +895,13 @@ namespace BvgAuthApi.Endpoints
                     var totalShares = election.Padron.Sum(p => p.Shares);
                     var presentShares = election.Padron.Where(p => p.Attendance != AttendanceType.None).Sum(p => p.Shares);
                     var locked = (await db.ElectionFlags.FirstOrDefaultAsync(f => f.ElectionId == id))?.AttendanceClosed == true;
-                    await hub.Clients.All.SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = locked, QuorumMin = election.QuorumMinimo });
-                    await hub.Clients.All.SendAsync("quorumUpdated", new { ElectionId = id, TotalShares = totalShares, PresentShares = presentShares, Quorum = totalShares == 0 ? 0 : presentShares / totalShares });
+                    var quorum = totalShares == 0 ? 0 : presentShares / totalShares;
+                    var quorumOk = totalShares > 0 && quorum >= election.QuorumMinimo;
+                    await hub.Clients.Group($"election-{id}").SendAsync("attendanceSummary", new { ElectionId = id, Total = total, Presencial = presencial, Virtual = @virtual, Ausente = ausente, TotalShares = totalShares, PresentShares = presentShares, Locked = locked, QuorumMin = election.QuorumMinimo });
+                    await hub.Clients.Group($"election-{id}").SendAsync("quorumUpdated", new { ElectionId = id, TotalShares = totalShares, PresentShares = presentShares, Quorum = quorum, Achieved = quorumOk });
+                    var metrics = new BvgAuthApi.Services.MetricsService(db);
+                    var data = await metrics.ComputeDashboard(id);
+                    await hub.Clients.Group($"election-{id}").SendAsync("metricsUpdated", data);
                 }
                 return Results.Ok();
             }).RequireAuthorization().DisableAntiforgery();

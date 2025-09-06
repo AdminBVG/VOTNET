@@ -1,0 +1,37 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\dashboard.html",
+      "PackagePath": "staticwebassets\\samples\\dashboard.html"
+    },
+    {
+      "Id": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\kiosk.html",
+      "PackagePath": "staticwebassets\\samples\\kiosk.html"
+    },
+    {
+      "Id": "C:\\PROYECTOSGH\\VOTNET\\BvgAuthApi\\wwwroot\\samples\\padron.html",
+      "PackagePath": "staticwebassets\\samples\\padron.html"
+    },
+    {
+      "Id": "obj\\Release\\net9.0\\staticwebassets\\msbuild.BvgAuthApi.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
+    },
+    {
+      "Id": "obj\\Release\\net9.0\\staticwebassets\\msbuild.BvgAuthApi.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Release\\net9.0\\staticwebassets\\msbuild.build.BvgAuthApi.props",
+      "PackagePath": "build\\BvgAuthApi.props"
+    },
+    {
+      "Id": "obj\\Release\\net9.0\\staticwebassets\\msbuild.buildMultiTargeting.BvgAuthApi.props",
+      "PackagePath": "buildMultiTargeting\\BvgAuthApi.props"
+    },
+    {
+      "Id": "obj\\Release\\net9.0\\staticwebassets\\msbuild.buildTransitive.BvgAuthApi.props",
+      "PackagePath": "buildTransitive\\BvgAuthApi.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

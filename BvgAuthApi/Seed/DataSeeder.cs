@@ -86,6 +86,7 @@ namespace BvgAuthApi.Seed
                     ""OldAttendance"" integer NOT NULL,
                     ""NewAttendance"" integer NOT NULL,
                     ""UserId"" text NOT NULL,
+                    ""Reason"" text NULL,
                     ""Timestamp"" timestamptz NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS ""IX_AttendanceLogs_ElectionId"" ON ""AttendanceLogs""(""ElectionId"");

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard BVG</title>
+  <style>
+    :root{ --bg:#ffffff; --fg:#111111; --card:#f5f5f7; --muted:#666; --ok:#15803d; --warn:#d97706; --err:#b91c1c; }
+    [data-theme=dark]{ --bg:#0f1115; --fg:#e5e7eb; --card:#1a1e24; --muted:#9ca3af; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--card);position:sticky;top:0}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px}
+    .card{background:var(--card);padding:12px;border-radius:8px}
+    .muted{color:var(--muted)}
+    .badge{padding:2px 8px;border-radius:999px;background:var(--muted);color:#fff;font-size:12px}
+    .ok{background:var(--ok)!important} .warn{background:var(--warn)!important} .err{background:var(--err)!important}
+    input,select,button{background:transparent;color:var(--fg);border:1px solid var(--muted);padding:6px 8px;border-radius:6px}
+    a{color:inherit}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.5/signalr.min.js" defer></script>
+</head>
+<body>
+  <header>
+    <div>
+      <strong>Dashboard BVG</strong>
+      <span class="muted" id="status">-</span>
+    </div>
+    <div>
+      <label>ElectionId <input id="eid" size="36" placeholder="GUID"/></label>
+      <label>Token <input id="tok" size="28" placeholder="JWT (opcional)"/></label>
+      <button id="btnLoad">Cargar</button>
+      <button id="btnTheme">Tema</button>
+    </div>
+  </header>
+  <div class="grid">
+    <div class="card"><h3>Participación</h3><div id="part"></div></div>
+    <div class="card"><h3>Quórum</h3><div id="quorum"></div></div>
+    <div class="card"><h3>Usuarios activos</h3><div id="active">0</div></div>
+    <div class="card">
+      <h3>Admin</h3>
+      <div id="actions" class="muted">Cargue estado para ver acciones</div>
+    </div>
+    <div class="card" style="grid-column:1/4"><h3>Preguntas</h3><div id="qs"></div></div>
+  </div>
+  <script>
+    const eid = document.getElementById('eid');
+    const btn = document.getElementById('btnLoad');
+    const tok = document.getElementById('tok');
+    const st = document.getElementById('status');
+    const part = document.getElementById('part');
+    const quorum = document.getElementById('quorum');
+    const qs = document.getElementById('qs');
+    const act = document.getElementById('active');
+    const btnTheme = document.getElementById('btnTheme');
+
+    let conn; let currentId;
+    btnTheme.onclick = () => {
+      const root = document.documentElement;
+      const cur = root.getAttribute('data-theme')==='dark'?'light':'dark';
+      root.setAttribute('data-theme',cur);
+    };
+
+    function fmtPct(x){ return (x*100).toFixed(1)+'%'; }
+    function setStatus(s){ st.textContent = s; }
+    function renderDash(d){
+      const p = d.Participation;
+      part.innerHTML = `Personas: ${fmtPct(p.People)} | Acciones: ${fmtPct(p.Shares)}<br/>Quórum mínimo: ${fmtPct(p.QuorumMinimo)} ${p.QuorumAchieved?'<span class="badge ok">OK</span>':'<span class="badge err">NO</span>'}`;
+      const q = d.Totals.Shares; const r = (q.Total===0?0:(d.Totals.Shares.Present/q.Total));
+      quorum.innerHTML = `Presentes: ${d.Totals.Shares.Present} / ${q.Total} (${fmtPct(r)})`;
+      const html = d.Votes.ByQuestion.map(x=>{
+        return `<div style="margin:8px 0;padding:8px;border:1px dashed var(--muted);border-radius:6px">
+          <div><strong>${x.Text}</strong></div>
+          <div class="muted">Progreso: personas ${fmtPct(x.ProgressPeople)} | acciones ${fmtPct(x.ProgressShares)}</div>
+        </div>`;
+      }).join('');
+      qs.innerHTML = html;
+    }
+
+    function authHeaders(){
+      const t = tok.value.trim();
+      return t? { 'Authorization': 'Bearer '+t } : {};
+    }
+
+    async function loadDash(id){
+      const res = await fetch(`/api/elections/${id}/dashboard`,{credentials:'include', headers: authHeaders()});
+      if(!res.ok){ setStatus('Error dashboard'); return; }
+      const data = await res.json(); renderDash(data); setStatus('Dashboard cargado');
+    }
+
+    async function loadStatus(id){
+      const res = await fetch(`/api/elections/${id}/status`, { headers: authHeaders() });
+      if(!res.ok){ document.getElementById('actions').textContent='Sin permisos o error de estado'; return; }
+      const d = await res.json();
+      const A = d.Actions;
+      const mk = (label, path, needsConfirm=false)=>`<button data-path="${path}" data-confirm="${needsConfirm}">${label}</button>`;
+      let html = '';
+      if(A.CanOpenReg) html += mk('Abrir Registro', 'open-registration');
+      if(A.CanCloseReg) html += mk('Cerrar Registro', 'close-registration', true);
+      if(A.CanReopenReg) html += mk('Reabrir Registro', 'reopen-registration', true);
+      if(A.CanOpenVote) html += mk('Abrir Votación', 'open-voting');
+      if(A.CanCloseVote) html += mk('Cerrar Votación', 'close-voting', true);
+      if(A.CanCertify) html += mk('Certificar', 'certify', true);
+      if(!html) html = '<span class="muted">Sin acciones disponibles en este estado</span>';
+      const el = document.getElementById('actions');
+      el.innerHTML = html;
+      el.querySelectorAll('button').forEach(b=>{
+        b.onclick = async ()=>{
+          const path = b.getAttribute('data-path');
+          const needs = b.getAttribute('data-confirm')==='true';
+          const body = needs? { confirm: true } : {};
+          const r = await fetch(`/api/elections/${id}/status/${path}`, { method:'POST', headers: {'Content-Type':'application/json', ...authHeaders()}, body: JSON.stringify(body) });
+          if(r.ok){ setStatus('Acción aplicada'); await loadDash(id); await loadStatus(id); }
+          else{ const e = await r.json().catch(()=>({})); alert('Error: '+(e.error||r.status)); }
+        }
+      });
+    }
+
+    async function connect(id){
+      if(conn){ try{ await conn.stop(); }catch{} }
+      conn = new signalR.HubConnectionBuilder().withUrl('/hubs/live').withAutomaticReconnect().build();
+      conn.on('metricsUpdated', d=>{ if(id===currentId) renderDash(d); });
+      conn.on('statusChanged', d=>{ if(d.ElectionId===id){ setStatus('Estado: '+d.Status); } });
+      conn.on('activeUsers', d=>{ if(d.ElectionId===id){ act.textContent = d.Count; } });
+      await conn.start();
+      await conn.invoke('JoinElection', id);
+    }
+
+    btn.onclick = async ()=>{
+      currentId = eid.value.trim();
+      if(!currentId){ alert('Ingresa ElectionId'); return; }
+      await loadDash(currentId);
+      await loadStatus(currentId);
+      await connect(currentId);
+    };
+  </script>
+</body>
+</html>

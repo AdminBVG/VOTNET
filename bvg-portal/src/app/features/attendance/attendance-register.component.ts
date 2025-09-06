@@ -30,7 +30,11 @@ interface PadronRow {
   template: `
   <div class="page">
     <h2>Registro de asistencia</h2>
-    <div class="state">Estado: <strong>{{ locked ? \u0027Cerrada\u0027 : \u0027Abierta\u0027 }}</strong> <button *ngIf="auth.hasRole(\u0027GlobalAdmin\u0027) || auth.hasRole(\u0027VoteAdmin\u0027)" mat-stroked-button color="primary" (click)="toggleLock()">{{ locked ? \u0027Abrir asistencia\u0027 : \u0027Cerrar asistencia\u0027 }}</button></div>
+    <div class="state">Estado: <strong>{{ locked ? \u0027Cerrada\u0027 : \u0027Abierta\u0027 }}</strong>
+      <button *ngIf="auth.hasRole(\u0027GlobalAdmin\u0027) || auth.hasRole(\u0027VoteAdmin\u0027)" mat-stroked-button color="primary" (click)="toggleLock()">{{ locked ? \u0027Abrir asistencia\u0027 : \u0027Cerrar asistencia\u0027 }}</button>
+      <button *ngIf="(auth.hasRole(\u0027GlobalAdmin\u0027) || auth.hasRole(\u0027VoteAdmin\u0027)) && status===\u0027Draft\u0027" mat-stroked-button color="primary" (click)="openRegistration()">Abrir registro</button>
+      <button *ngIf="(auth.hasRole(\u0027GlobalAdmin\u0027) || auth.hasRole(\u0027VoteAdmin\u0027)) && status===\u0027RegistrationClosed\u0027" mat-stroked-button color="primary" (click)="reopenRegistration()">Reabrir registro</button>
+    </div>
     <div class="charts" *ngIf="rows().length">
       <div class="donut" [ngStyle]="chartStyle()">
         <div class="hole">
@@ -54,11 +58,11 @@ interface PadronRow {
         <mat-option value="Virtual">Virtual</mat-option>
         <mat-option value="None">Ausente</mat-option>
       </mat-select>
-      <button mat-stroked-button (click)="markAll()" [disabled]="locked" [matTooltip]="locked ? 'Asistencia cerrada' : ''">Marcar todo</button>
-      <button mat-raised-button color="primary" (click)="markSelected()" [disabled]="locked || !anySelected()" [matTooltip]="locked ? 'Asistencia cerrada' : (!anySelected() ? 'Seleccione al menos un registro' : '')">Marcar seleccionados</button>
+      <button mat-stroked-button (click)="markAll()" [disabled]="!canMark" [matTooltip]="!canMark ? 'Registro no estÃ¡ abierto o asistencia bloqueada' : ''">Marcar todo</button>
+      <button mat-raised-button color="primary" (click)="markSelected()" [disabled]="!canMark || !anySelected()" [matTooltip]="!canMark ? 'Registro no estÃ¡ abierto o asistencia bloqueada' : (!anySelected() ? 'Seleccione al menos un registro' : '')">Marcar seleccionados</button>
     </div>
     <div class="summary" *ngIf="rows().length">
-      Total: {{total()}} · Presenciales: {{count('Presencial')}} · Virtuales: {{count('Virtual')}} · Ausentes: {{count('None')}}
+      Total: {{total()}} Â· Presenciales: {{count('Presencial')}} Â· Virtuales: {{count('Virtual')}} Â· Ausentes: {{count('None')}}
       <div class="bar"><div class="p" [style.width.%]="presentPct()"></div></div>
     </div>
     <table mat-table [dataSource]="rows()" class="mat-elevation-z1 compact" *ngIf="rows().length">
@@ -99,7 +103,7 @@ interface PadronRow {
       <tr mat-header-row *matHeaderRowDef="cols"></tr>
       <tr mat-row *matRowDef="let row; columns: cols;"></tr>
     </table>
-    <div *ngIf="!rows().length" class="muted">Sin padrón o sin permisos.</div>
+    <div *ngIf="!rows().length" class="muted">Sin padrÃ³n o sin permisos.</div>
   </div>
   `,
   styles: [`
@@ -133,6 +137,8 @@ export class AttendanceRegisterComponent{
   private snack = inject(MatSnackBar);
   auth = inject(AuthService);
   locked = false;
+  status: 'Draft'|'RegistrationOpen'|'RegistrationClosed'|'VotingOpen'|'VotingClosed'|'Certified'|string = 'Draft';
+  canMark = false;
   id = this.route.snapshot.params['id'];
   cols = ['sel','id','name','legal','proxy','att'];
   rows = signal<PadronRow[]>([]);
@@ -141,7 +147,8 @@ export class AttendanceRegisterComponent{
   constructor(){
     this.load();
     // Load summary to know lock state
-    this.http.get<any>(`/api/elections/${this.id}/attendance/summary`).subscribe({ next: d=> { this.locked = !!d?.locked; }, error: _=>{} });
+    this.http.get<any>(`/api/elections/${this.id}/attendance/summary`).subscribe({ next: d=> { this.locked = !!d?.locked; this.canMark = (this.status === 'RegistrationOpen') && !this.locked; }, error: _=>{} });
+    this.http.get<any>(`/api/elections/${this.id}/status`).subscribe({ next: s=> { const stat = (s?.Status ?? s?.status ?? 'Draft'); const lck = !!(s?.Locked ?? s?.locked ?? false); this.status = stat; this.locked = lck; this.canMark = (stat === 'RegistrationOpen') && !lck; }, error: _=>{} });
     // Live updates for attendance
     this.live.onAttendanceUpdated(p => {
       if (p && p.ElectionId === this.id){
@@ -150,12 +157,12 @@ export class AttendanceRegisterComponent{
       }
     });
     this.live.onAttendanceSummary(_ => {/* donut recalculates from rows; no-op */});
-    this.live.onAttendanceLockChanged(p => { if (p && p.ElectionId === this.id) this.locked = p.Locked; });
+    this.live.onAttendanceLockChanged(p => { if (p && p.ElectionId === this.id) { this.locked = p.Locked; this.canMark = (this.status === 'RegistrationOpen') && !this.locked; } });
   }
   load(){
     this.http.get<PadronRow[]>(`/api/elections/${this.id}/padron`).subscribe({
       next: d=> {
-        // Ordenar por ID de accionista numéricamente
+        // Ordenar por ID de accionista numÃ©ricamente
         const sortedData = (d || []).sort((a, b) => {
           const aNum = parseInt(a.shareholderId) || 0;
           const bNum = parseInt(b.shareholderId) || 0;
@@ -192,7 +199,7 @@ export class AttendanceRegisterComponent{
     return { background: g } as any;
   }
   set(r: PadronRow, att: 'Presencial'|'Virtual'|'None'){
-    if (this.locked) { this.snack.open('Asistencia cerrada','OK',{duration:1500}); return; }
+    if (!this.canMark) { this.snack.open('Registro no estÃ¡ abierto o asistencia bloqueada','OK',{duration:1800}); return; }
     this.http.post(`/api/elections/${this.id}/padron/${r.id}/attendance`, { attendance: att === 'Presencial' ? 2 : (att === 'Virtual' ? 1 : 0) }).subscribe({
       next: _=> { r.attendance = att; this.snack.open('Asistencia actualizada','OK',{duration:1300}); },
       error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
@@ -200,18 +207,18 @@ export class AttendanceRegisterComponent{
   }
   anySelected(){ return Object.values(this.selected).some(v=>v); }
   markAll(){
-    if (this.locked) { this.snack.open('Asistencia cerrada','OK',{duration:1500}); return; }
+    if (!this.canMark) { this.snack.open('Registro no estÃ¡ abierto o asistencia bloqueada','OK',{duration:1800}); return; }
     if(!confirm(`Aplicar "${this.bulkStatus}" a todos?`)) return;
-    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: (this.bulkStatus === 'Presencial' ? 2 : (this.bulkStatus === 'Virtual' ? 1 : 0)) }).subscribe({
+    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, reason: 'Marcación global' }).subscribe({
       next: _=> { this.snack.open('Marcado masivo aplicado','OK',{duration:1200}); this.load(); },
       error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
     });
   }
   markSelected(){
-    if (this.locked) { this.snack.open('Asistencia cerrada','OK',{duration:1500}); return; }
+    if (!this.canMark) { this.snack.open('Registro no estÃ¡ abierto o asistencia bloqueada','OK',{duration:1800}); return; }
     const ids = Object.keys(this.selected).filter(k=>this.selected[k]); if(!ids.length) return;
     if(!confirm(`Aplicar "${this.bulkStatus}" a ${ids.length} seleccionados?`)) return;
-    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: (this.bulkStatus === 'Presencial' ? 2 : (this.bulkStatus === 'Virtual' ? 1 : 0)), ids }).subscribe({
+    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, ids, reason: 'Marcación pÃ¡gina' }).subscribe({
       next: _=> { this.snack.open('Seleccionados actualizados','OK',{duration:1200}); this.load(); },
       error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
     });
@@ -229,7 +236,7 @@ export class AttendanceRegisterComponent{
     const code = (err && err.error && err.error.error) ? String(err.error.error) : '';
     switch (code) {
       case 'attendance_closed': return 'La asistencia está cerrada para esta elección.';
-      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elección.';
+      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elecciÃ³n.';
       case 'padron_entry_not_found': return 'No se encontró el registro del padrón.';
       default:
         if (err && err.status === 0) return 'No hay conexión con el servidor.';
@@ -237,5 +244,24 @@ export class AttendanceRegisterComponent{
         if (err && err.status === 403) return 'Acceso denegado.';
         return 'Ocurrió un error al actualizar la asistencia.';
     }
+  }
+  openRegistration(){
+    const isAdmin = this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin');
+    if (!isAdmin) return;
+    this.http.post('/api/elections/' + this.id + '/status/open-registration', {})
+      .subscribe({
+        next: _ => { this.status = 'RegistrationOpen'; this.locked = false; this.canMark = true; this.snack.open('Registro abierto','OK',{duration:1500}); },
+        error: _ => this.snack.open('No se pudo abrir registro','OK',{duration:2000})
+      });
+  }
+
+  reopenRegistration(){
+    const isAdmin = this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin');
+    if (!isAdmin) return;
+    this.http.post('/api/elections/' + this.id + '/status/reopen-registration', { confirm: true })
+      .subscribe({
+        next: _ => { this.status = 'RegistrationOpen'; this.locked = false; this.canMark = true; this.snack.open('Registro reabierto','OK',{duration:1500}); },
+        error: _ => this.snack.open('No se pudo reabrir registro','OK',{duration:2000})
+      });
   }
 }
