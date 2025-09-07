@@ -146,6 +146,7 @@ export class AttendanceRegisterComponent{
   selected: Record<string, boolean> = {};
   constructor(){
     this.load();
+    this.live.joinElection(this.id);
     // Load summary to know lock state
     this.http.get<any>(`/api/elections/${this.id}/attendance/summary`).subscribe({ next: d=> { this.locked = !!d?.locked; this.canMark = (this.status === 'RegistrationOpen') && !this.locked; }, error: _=>{} });
     this.http.get<any>(`/api/elections/${this.id}/status`).subscribe({ next: s=> { const stat = (s?.Status ?? s?.status ?? 'Draft'); const lck = !!(s?.Locked ?? s?.locked ?? false); this.status = stat; this.locked = lck; this.canMark = (stat === 'RegistrationOpen') && !lck; }, error: _=>{} });
@@ -254,6 +255,7 @@ export class AttendanceRegisterComponent{
         error: _ => this.snack.open('No se pudo abrir registro','OK',{duration:2000})
       });
   }
+  ngOnDestroy(){ this.live.leaveElection(this.id); }
 
   reopenRegistration(){
     const isAdmin = this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin');

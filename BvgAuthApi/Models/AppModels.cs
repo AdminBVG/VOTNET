@@ -43,6 +43,9 @@
         public DateTimeOffset? CertifiedAt { get; set; }
         public string? LastStatusChangedBy { get; set; }
         public DateTimeOffset? LastStatusChangedAt { get; set; }
+        // Signing configuration per election
+        public bool SigningRequired { get; set; }
+        public string? SigningProfile { get; set; }
     }
 
     public enum ElectionStatus
@@ -87,6 +90,8 @@
         public string UserId { get; set; } = default!;
         public string? Reason { get; set; }
         public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+        public string? PrevHash { get; set; }
+        public string? SelfHash { get; set; }
     }
 
     public class ElectionFlag

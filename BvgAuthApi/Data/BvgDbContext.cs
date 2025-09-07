@@ -30,6 +30,7 @@ namespace BvgAuthApi.Data
             {
                 e.Property(x => x.Name).IsRequired().HasMaxLength(200);
                 e.Property(x => x.Details).HasMaxLength(2000);
+                e.Property(x => x.SigningProfile).HasMaxLength(200);
                 e.HasMany(x => x.Questions).WithOne().HasForeignKey(q => q.ElectionId).OnDelete(DeleteBehavior.Cascade);
                 e.HasMany(x => x.Padron).WithOne().HasForeignKey(p => p.ElectionId).OnDelete(DeleteBehavior.Cascade);
                 e.HasMany(x => x.Assignments).WithOne().HasForeignKey(a => a.ElectionId).OnDelete(DeleteBehavior.Cascade);

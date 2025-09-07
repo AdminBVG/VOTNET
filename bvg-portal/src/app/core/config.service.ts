@@ -7,6 +7,8 @@ export interface AppConfig {
   smtp: { host: string; port: number; user: string; from: string; };
   azureAd: { tenantId: string; clientId: string; };
   branding: { logoUrl: string; };
+  security?: { csp: string };
+  signing?: { requireForCertification: boolean; defaultPfxPath?: string };
 }
 
 @Injectable({ providedIn: 'root' })

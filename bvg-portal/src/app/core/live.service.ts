@@ -43,4 +43,17 @@ export class LiveService {
   onAttendanceLockChanged(handler: (payload: { ElectionId:string; Locked:boolean }) => void){
     this.connection.on('attendanceLockChanged', handler as any);
   }
+
+  joinElection(id: string){
+    if (!id) return;
+    this.connection.invoke('JoinElection', id).catch(() => {/* ignore */});
+  }
+  leaveElection(id: string){
+    if (!id) return;
+    this.connection.invoke('LeaveElection', id).catch(() => {/* ignore */});
+  }
+
+  onSystemNotification(handler: (payload: { Type:string; Message:string; ElectionId?:string }) => void){
+    this.connection.on('systemNotification', handler as any);
+  }
 }

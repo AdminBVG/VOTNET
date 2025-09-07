@@ -7,6 +7,7 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using SkiaSharp;
 using QRCoder;
+using System.Security.Cryptography.X509Certificates;
 
 namespace BvgAuthApi.Services;
 
@@ -14,11 +15,15 @@ public class ReportService
 {
     private readonly BvgDbContext _db;
     private readonly IConfiguration _cfg;
+    private readonly AppRuntimeSettings _runtime;
+    private readonly SigningStore _signing;
 
-    public ReportService(BvgDbContext db, IConfiguration cfg)
+    public ReportService(BvgDbContext db, IConfiguration cfg, AppRuntimeSettings runtime, SigningStore signing)
     {
         _db = db;
         _cfg = cfg;
+        _runtime = runtime;
+        _signing = signing;
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
@@ -118,6 +123,10 @@ public class ReportService
                                 }
                             }
                         });
+                        // Hash for quick verification of the attendance list
+                        var listHash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(list)));
+                        col.Item().Text($"Attendance Hash (SHA-256): {Convert.ToHexString(listHash)}").FontSize(8);
+
                         col.Item().PaddingTop(20).Row(row =>
                         {
                             row.RelativeItem().Column(cc =>
@@ -185,6 +194,40 @@ public class ReportService
         }
 
         var logoUrl = _cfg["Branding:LogoUrl"] ?? string.Empty;
+
+        // Build a normalized summary to hash/sign
+        var summaryObj = new {
+            ElectionId = election.Id,
+            Questions = qResults.Select(q => new { q.Question, Options = q.Options, q.AbstentionsCount, q.AbstentionsShares }),
+            PresentShares = presentShares
+        };
+        var summaryJson = System.Text.Json.JsonSerializer.Serialize(summaryObj);
+        var summaryHash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(summaryJson));
+        string? signatureB64 = null;
+        try
+        {
+            // Prefer per-election SigningProfile when set
+            X509Certificate2? cert = null;
+            if (!string.IsNullOrWhiteSpace(election.SigningProfile))
+                cert = _signing.GetCertificate(election.SigningProfile);
+            if (cert is null)
+            {
+                var pfxPath = string.IsNullOrWhiteSpace(_runtime.SigningDefaultPfxPath) ? _cfg["Signing:DefaultPfxPath"] : _runtime.SigningDefaultPfxPath;
+                var pfxPassword = string.IsNullOrWhiteSpace(_runtime.SigningDefaultPfxPassword) ? _cfg["Signing:DefaultPfxPassword"] : _runtime.SigningDefaultPfxPassword;
+                if (!string.IsNullOrWhiteSpace(pfxPath) && System.IO.File.Exists(pfxPath))
+                    cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(pfxPath, pfxPassword, System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.MachineKeySet);
+            }
+            if (cert is not null)
+            {
+                using var rsa = System.Security.Cryptography.X509Certificates.RSACertificateExtensions.GetRSAPrivateKey(cert!);
+                if (rsa is not null)
+                {
+                    var sig = rsa.SignData(Encoding.UTF8.GetBytes(summaryJson), System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+                    signatureB64 = Convert.ToBase64String(sig);
+                }
+            }
+        }
+        catch { /* ignore signing errors; still include hash */ }
 
         var bytes = Document.Create(container =>
         {
@@ -258,6 +301,10 @@ public class ReportService
                                 r.RelativeItem(1).Image(piePng);
                             });
                         }
+                        // Audit footer with hash and optional signature
+                        col.Item().PaddingTop(10).Text($"Results Hash (SHA-256): {Convert.ToHexString(summaryHash)}").FontSize(8);
+                        if (!string.IsNullOrEmpty(signatureB64))
+                            col.Item().Text($"Digital Signature (RSA/SHA256, Base64): {signatureB64}").FontSize(8);
                     });
                 });
                 page.Footer().AlignRight().Text(x =>

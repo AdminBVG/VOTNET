@@ -46,6 +46,10 @@ public static class ReportEndpoints
                 if (!hasAssign) return Err("forbidden", 403);
             }
 
+            var election = await db.Elections.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
+            if (election is null) return Err("election_not_found", 404);
+            if (!election.IsClosed) return Err("election_not_closed", 400);
+
             var pdf = await svc.BuildResultsPdf(id);
             var fileName = $"results_{id}.pdf";
             return Results.File(pdf, "application/pdf", fileName, enableRangeProcessing: false);
@@ -54,4 +58,3 @@ public static class ReportEndpoints
         return app;
     }
 }
-

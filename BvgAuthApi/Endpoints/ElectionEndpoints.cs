@@ -14,6 +14,13 @@ namespace BvgAuthApi.Endpoints
 {
     public static class ElectionEndpoints
     {
+        private static string ComputeLogHash(AttendanceLog log)
+        {
+            var payload = $"{log.ElectionId}|{log.PadronEntryId}|{(int)log.OldAttendance}|{(int)log.NewAttendance}|{log.UserId}|{log.Timestamp:O}|{log.PrevHash}";
+            var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+            var hash = System.Security.Cryptography.SHA256.HashData(bytes);
+            return Convert.ToHexString(hash);
+        }
         public static IEndpointRouteBuilder MapElections(this IEndpointRouteBuilder app)
         {
             var g = app.MapGroup("/api/elections");
@@ -117,19 +124,7 @@ namespace BvgAuthApi.Endpoints
                 await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
                 await hub.Clients.Group($"election-{id}").SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = true });
 
-                // Auto abrir votación si ya se alcanzó quórum mínimo
-                var totalShares = await db.Padron.Where(p => p.ElectionId == id).SumAsync(p => p.Shares);
-                var presentShares = await db.Padron.Where(p => p.ElectionId == id && p.Attendance != AttendanceType.None).SumAsync(p => p.Shares);
-                var ratio = totalShares == 0 ? 0 : presentShares / (totalShares == 0 ? 1 : totalShares);
-                if (e.Status == ElectionStatus.RegistrationClosed && ratio >= e.QuorumMinimo)
-                {
-                    e.Status = ElectionStatus.VotingOpen;
-                    e.VotingOpenedAt = DateTimeOffset.UtcNow;
-                    e.LastStatusChangedAt = DateTimeOffset.UtcNow;
-                    e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
-                    await db.SaveChangesAsync();
-                    await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
-                }
+                // Auto-open voting disabled: opening voting is a manual action after quorum validation
                 return Results.Ok(new { e.Status });
             }).RequireAuthorization();
 
@@ -179,30 +174,52 @@ namespace BvgAuthApi.Endpoints
             {
                 static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
                 if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
-                var e = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                var e = await db.Elections.Include(x=>x.Questions).Include(x=>x.Padron).Include(x=>x.Votes).FirstOrDefaultAsync(x => x.Id == id);
                 if (e is null) return Err("election_not_found", 404);
                 if (e.Status != ElectionStatus.VotingOpen) return Err("invalid_state", 400);
                 var confirm = body.TryGetProperty("confirm", out var c) && c.ValueKind == JsonValueKind.True;
                 if (!confirm) return Err("confirm_required", 409, new { action = "close-voting" });
+                // Enforce 100% responses: each present must have voted every question
+                var presentIds = e.Padron.Where(p => p.Attendance != AttendanceType.None).Select(p => p.Id).ToList();
+                foreach (var pid in presentIds)
+                    foreach (var q in e.Questions)
+                        if (!e.Votes.Any(v => v.PadronEntryId == pid && v.ElectionQuestionId == q.Id))
+                            return Err("incomplete_votes", 400, new { message = "Faltan votos para completar 100% de respuestas de presentes en todas las preguntas" });
                 e.Status = ElectionStatus.VotingClosed;
                 e.VotingClosedAt = DateTimeOffset.UtcNow;
                 e.IsClosed = true;
                 e.LastStatusChangedAt = DateTimeOffset.UtcNow;
                 e.LastStatusChangedBy = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+                var fcv = await db.ElectionFlags.FirstOrDefaultAsync(x => x.ElectionId == id);
+                if (fcv is null) { fcv = new ElectionFlag { ElectionId = id, AttendanceClosed = true }; db.ElectionFlags.Add(fcv); } else fcv.AttendanceClosed = true;
                 await db.SaveChangesAsync();
                 await hub.Clients.Group($"election-{id}").SendAsync("statusChanged", new { ElectionId = id, Status = e.Status.ToString() });
                 return Results.Ok(new { e.Status });
             }).RequireAuthorization();
 
-            g.MapPost("/{id}/status/certify", async (Guid id, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
+            g.MapPost("/{id}/status/certify", async (Guid id, [FromBody] JsonElement body, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub, IConfiguration cfg, BvgAuthApi.Services.AppRuntimeSettings runtime) =>
             {
                 static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
                 if (!(user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin))) return Err("forbidden", 403);
-                var e = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
+                var e = await db.Elections.Include(x=>x.Questions).Include(x=>x.Padron).Include(x=>x.Votes).FirstOrDefaultAsync(x => x.Id == id);
                 if (e is null) return Err("election_not_found", 404);
                 if (e.Status != ElectionStatus.VotingClosed) return Err("invalid_state", 400);
                 var confirm = body.TryGetProperty("confirm", out var c) && c.ValueKind == JsonValueKind.True;
                 if (!confirm) return Err("confirm_required", 409, new { action = "certify" });
+                // Enforce 100% responses
+                var presentIds2 = e.Padron.Where(p => p.Attendance != AttendanceType.None).Select(p => p.Id).ToList();
+                foreach (var pid in presentIds2)
+                    foreach (var q in e.Questions)
+                        if (!e.Votes.Any(v => v.PadronEntryId == pid && v.ElectionQuestionId == q.Id))
+                            return Err("incomplete_results", 400);
+                // Optional: require signing configured
+                var requireSign = e.SigningRequired || runtime.SigningRequireForCertification || cfg.GetValue<bool>("Signing:RequireForCertification");
+                if (requireSign)
+                {
+                    var pfxPath = string.IsNullOrWhiteSpace(runtime.SigningDefaultPfxPath) ? cfg["Signing:DefaultPfxPath"] ?? string.Empty : runtime.SigningDefaultPfxPath;
+                    if (string.IsNullOrWhiteSpace(pfxPath) || !System.IO.File.Exists(pfxPath))
+                        return Err("signing_not_configured", 500);
+                }
                 e.Status = ElectionStatus.Certified;
                 e.CertifiedAt = DateTimeOffset.UtcNow;
                 e.LastStatusChangedAt = DateTimeOffset.UtcNow;
@@ -265,6 +282,9 @@ namespace BvgAuthApi.Endpoints
                     var qn = new ElectionQuestion { Text = q.Text };
                     foreach (var op in q.Options)
                         qn.Options.Add(new ElectionOption { Text = op });
+                    // Ensure Abstention option exists by default
+                    if (!qn.Options.Any(o => string.Equals(o.Text, "Abstención", StringComparison.OrdinalIgnoreCase) || string.Equals(o.Text, "Abstencion", StringComparison.OrdinalIgnoreCase)))
+                        qn.Options.Add(new ElectionOption { Text = "Abstención" });
                     e.Questions.Add(qn);
                 }
                 db.Elections.Add(e);
@@ -339,7 +359,9 @@ namespace BvgAuthApi.Endpoints
                 const long maxFileSize = 5 * 1024 * 1024; // 5MB
                 const int maxRows = 1000;
 
-                if (file.Length == 0 || file.Length > maxFileSize)
+                // Validate file size and extension (.xlsx)
+                var ext = System.IO.Path.GetExtension(file.FileName)?.ToLowerInvariant();
+                if (file.Length == 0 || file.Length > maxFileSize || ext != ".xlsx")
                     return Err("invalid_file_size", 400);
 
                 var election = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
@@ -362,8 +384,8 @@ namespace BvgAuthApi.Endpoints
                     if (row - 1 > maxRows)
                         return Err("too_many_rows", 400);
 
-                    if (!decimal.TryParse(ws.Cells[row,5].Text, out var shares))
-                        return Err("invalid_shares", 400, new { row });
+                if (!decimal.TryParse(ws.Cells[row,5].Text, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var shares))
+                    return Err("invalid_shares", 400, new { row });
 
                     var entry = new PadronEntry
                     {
@@ -387,7 +409,8 @@ namespace BvgAuthApi.Endpoints
                     => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
                 const long maxFileSize = 5 * 1024 * 1024; // 5MB
                 const int maxRows = 5000;
-                if (file.Length == 0 || file.Length > maxFileSize) return Err("invalid_file_size", 400);
+                var ext = System.IO.Path.GetExtension(file.FileName)?.ToLowerInvariant();
+                if (file.Length == 0 || file.Length > maxFileSize || ext != ".xlsx") return Err("invalid_file_size", 400);
 
                 var election = await db.Elections.FirstOrDefaultAsync(x => x.Id == id);
                 if (election is null) return Err("election_not_found", 404);
@@ -414,7 +437,7 @@ namespace BvgAuthApi.Endpoints
                     var sharesText = ws.Cells[row,5].Text?.Trim();
                     if (string.IsNullOrWhiteSpace(idCell) || string.IsNullOrWhiteSpace(name))
                         errors.Add(new { row, error = "missing_required" });
-                    if (!decimal.TryParse(sharesText, out var shares) || shares < 0)
+                    if (!decimal.TryParse(sharesText, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var shares) || shares < 0)
                         errors.Add(new { row, error = "invalid_shares" });
                     if (!string.IsNullOrWhiteSpace(idCell) && !seenIds.Add(idCell))
                         errors.Add(new { row, error = "duplicate_id" });
@@ -498,7 +521,22 @@ namespace BvgAuthApi.Endpoints
                 if (flags?.AttendanceClosed == true) return Err("attendance_closed", 400);
                 var padron = election.Padron.FirstOrDefault(p => p.Id == padronId);
                 if (padron is null) return Err("padron_entry_not_found", 404);
+                var oldAtt2 = padron.Attendance;
                 padron.Attendance = dto.Attendance;
+                var last3 = await db.AttendanceLogs.Where(l => l.ElectionId == id)
+                    .OrderByDescending(l => l.Timestamp).Select(l => new { l.SelfHash }).FirstOrDefaultAsync();
+                var prev3 = last3?.SelfHash ?? string.Empty;
+                var log3 = new AttendanceLog
+                {
+                    ElectionId = id,
+                    PadronEntryId = padronId,
+                    OldAttendance = oldAtt2,
+                    NewAttendance = padron.Attendance,
+                    UserId = userId,
+                    PrevHash = prev3
+                };
+                log3.SelfHash = ComputeLogHash(log3);
+                db.AttendanceLogs.Add(log3);
                 await db.SaveChangesAsync();
                 // Broadcast richer summary and metrics
                 var totalShares = election.Padron.Sum(p => p.Shares);
@@ -584,15 +622,21 @@ namespace BvgAuthApi.Endpoints
                     {
                         var old = entry.Attendance;
                         entry.Attendance = newAtt;
-                        db.AttendanceLogs.Add(new AttendanceLog
+                        var last = await db.AttendanceLogs.Where(l => l.ElectionId == id)
+                            .OrderByDescending(l => l.Timestamp).Select(l => new { l.SelfHash }).FirstOrDefaultAsync();
+                        var prev = last?.SelfHash ?? string.Empty;
+                        var log = new AttendanceLog
                         {
                             ElectionId = id,
                             PadronEntryId = entry.Id,
                             OldAttendance = old,
                             NewAttendance = entry.Attendance,
                             UserId = userId,
-                            Reason = reason
-                        });
+                            Reason = reason,
+                            PrevHash = prev
+                        };
+                        log.SelfHash = ComputeLogHash(log);
+                        db.AttendanceLogs.Add(log);
                     }
                 }
                 await db.SaveChangesAsync();
@@ -622,8 +666,9 @@ namespace BvgAuthApi.Endpoints
             g.MapPost("/{id}/padron/{padronId}/proxy", async (Guid id, Guid padronId, IFormFile file, IWebHostEnvironment env, IConfiguration cfg, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
                 static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+                var ext = System.IO.Path.GetExtension(file.FileName)?.ToLowerInvariant();
                 if (file.Length == 0 || file.Length > 10 * 1024 * 1024) return Err("invalid_file_size", 400);
-                if (!string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase)) return Err("invalid_content_type", 400);
+                if (!string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase) || ext != ".pdf") return Err("invalid_content_type", 400);
                 var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.AttendanceRegistrar))
@@ -636,8 +681,8 @@ namespace BvgAuthApi.Endpoints
                 Directory.CreateDirectory(dir);
                 var path = Path.Combine(dir, padronId + ".pdf");
                 using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write)) await file.CopyToAsync(fs);
-                var url = $"/uploads/elections/{id}/actas/{padronId}.pdf";
-                await hub.Clients.All.SendAsync("actaUploaded", new { ElectionId = id, PadronId = padronId, Url = url });
+                var url = $"/api/elections/{id}/padron/{padronId}/acta";
+                await hub.Clients.Group($"election-{id}").SendAsync("actaUploaded", new { ElectionId = id, PadronId = padronId, Url = url });
                 return Results.Ok(new { url });
             }).RequireAuthorization().DisableAntiforgery();
 
@@ -645,8 +690,9 @@ namespace BvgAuthApi.Endpoints
             g.MapPost("/{id}/padron/{padronId}/acta", async (Guid id, Guid padronId, IFormFile file, IWebHostEnvironment env, IConfiguration cfg, BvgDbContext db, ClaimsPrincipal user, IHubContext<LiveHub> hub) =>
             {
                 static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+                var ext = System.IO.Path.GetExtension(file.FileName)?.ToLowerInvariant();
                 if (file.Length == 0 || file.Length > 10 * 1024 * 1024) return Err("invalid_file_size", 400);
-                if (!string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase)) return Err("invalid_content_type", 400);
+                if (!string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase) || ext != ".pdf") return Err("invalid_content_type", 400);
                 var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
                 var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
                 if (!isAdmin && !await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && a.Role == AppRoles.AttendanceRegistrar))
@@ -659,8 +705,8 @@ namespace BvgAuthApi.Endpoints
                 Directory.CreateDirectory(dir);
                 var path = Path.Combine(dir, padronId + ".pdf");
                 using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write)) await file.CopyToAsync(fs);
-                var url = $"/uploads/elections/{id}/actas/{padronId}.pdf";
-                await hub.Clients.All.SendAsync("actaUploaded", new { ElectionId = id, PadronId = padronId, Url = url });
+                var url = $"/api/elections/{id}/padron/{padronId}/acta";
+                await hub.Clients.Group($"election-{id}").SendAsync("actaUploaded", new { ElectionId = id, PadronId = padronId, Url = url });
                 return Results.Ok(new { url });
             }).RequireAuthorization().DisableAntiforgery();
 
@@ -814,8 +860,15 @@ namespace BvgAuthApi.Endpoints
                     ElectionOptionId = dto.OptionId,
                     RegistrarId = registrarId
                 });
-                await db.SaveChangesAsync();
-                await hub.Clients.All.SendAsync("voteRegistered", new { ElectionId = id, QuestionId = dto.QuestionId, OptionId = dto.OptionId });
+                try
+                {
+                    await db.SaveChangesAsync();
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return Err("vote_duplicate", 400);
+                }
+                await hub.Clients.Group($"election-{id}").SendAsync("voteRegistered", new { ElectionId = id, QuestionId = dto.QuestionId, OptionId = dto.OptionId });
                 return Results.Ok();
             }).RequireAuthorization();
 
@@ -859,7 +912,14 @@ namespace BvgAuthApi.Endpoints
                         RegistrarId = registrarId
                     });
                 }
-                await db.SaveChangesAsync();
+                try
+                {
+                    await db.SaveChangesAsync();
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return Err("vote_duplicate", 400);
+                }
                 foreach (var v in dto.Votes)
                     await hub.Clients.Group($"election-{id}").SendAsync("voteRegistered", new { ElectionId = id, QuestionId = v.QuestionId, OptionId = v.OptionId });
                 // Broadcast metrics update to election group
@@ -952,7 +1012,7 @@ namespace BvgAuthApi.Endpoints
                 if (f is null) { f = new ElectionFlag { ElectionId = id, AttendanceClosed = true }; db.ElectionFlags.Add(f); }
                 else f.AttendanceClosed = true;
                 await db.SaveChangesAsync();
-                await hub.Clients.All.SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = true });
+                await hub.Clients.Group($"election-{id}").SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = true });
                 return Results.Ok(new { locked = true });
             }).RequireAuthorization();
 
@@ -964,7 +1024,7 @@ namespace BvgAuthApi.Endpoints
                 if (f is null) { f = new ElectionFlag { ElectionId = id, AttendanceClosed = false }; db.ElectionFlags.Add(f); }
                 else f.AttendanceClosed = false;
                 await db.SaveChangesAsync();
-                await hub.Clients.All.SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = false });
+                await hub.Clients.Group($"election-{id}").SendAsync("attendanceLockChanged", new { ElectionId = id, Locked = false });
                 return Results.Ok(new { locked = false });
             }).RequireAuthorization();
 
@@ -1002,12 +1062,7 @@ namespace BvgAuthApi.Endpoints
 
             g.MapPost("/{id}/close", async (Guid id, BvgDbContext db) =>
             {
-                static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
-                var election = await db.Elections.FirstOrDefaultAsync(e => e.Id == id);
-                if (election is null) return Err("election_not_found", 404);
-                election.IsClosed = true;
-                await db.SaveChangesAsync();
-                return Results.Ok();
+                return Results.Json(new { error = "operation_removed" }, statusCode: 410);
             }).RequireAuthorization(p => p.RequireRole(AppRoles.GlobalAdmin, AppRoles.VoteAdmin)).DisableAntiforgery();
 
             // Update election basic fields (name, details, scheduledAt, quorum)
@@ -1026,6 +1081,8 @@ namespace BvgAuthApi.Endpoints
                     if (q <= 0 || q > 1) return Err("invalid_quorum", 400);
                     e.QuorumMinimo = q;
                 }
+                if (dto.SigningRequired.HasValue) e.SigningRequired = dto.SigningRequired.Value;
+                if (dto.SigningProfile is not null) e.SigningProfile = dto.SigningProfile;
                 await db.SaveChangesAsync();
                 return Results.Ok(new { e.Id });
             }).RequireAuthorization();
@@ -1040,6 +1097,6 @@ namespace BvgAuthApi.Endpoints
         public record BatchVoteDto(List<VoteDto> Votes);
         public record AssignmentDto(string UserId, string Role);
         public record BatchAttendanceDto(List<Guid>? Ids, AttendanceType Attendance);
-        public record UpdateElectionDto(string? Name, string? Details, DateTimeOffset? ScheduledAt, decimal? QuorumMinimo);
+        public record UpdateElectionDto(string? Name, string? Details, DateTimeOffset? ScheduledAt, decimal? QuorumMinimo, bool? SigningRequired, string? SigningProfile);
     }
 }

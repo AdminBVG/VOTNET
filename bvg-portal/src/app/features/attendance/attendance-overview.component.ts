@@ -70,8 +70,10 @@ export class AttendanceOverviewComponent{
     this.http.get<any>(`/api/elections/${this.id}/attendance/summary`).subscribe({
       next: d=> { this.data.set(d); this.loaded.set(true); }, error: _=> { this.data.set({ total:0, presencial:0, virtual:0, ausente:0, totalShares:0, presentShares:0, quorumMin:0, locked:false }); this.loaded.set(true); }
     });
+    this.live.joinElection(this.id);
     this.live.onAttendanceSummary(p => { if (p && p.ElectionId === this.id) this.http.get<any>(`/api/elections/${this.id}/attendance/summary`).subscribe({ next: d=> this.data.set(d) }); });
   }
+  ngOnDestroy(){ this.live.leaveElection(this.id); }
   chartStyle(){
     const d = this.data(); const total = d?.total || 1;
     const p = Math.round(((d?.presencial||0)/total)*100);

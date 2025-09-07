@@ -1,7 +1,7 @@
-import { Component, inject, signal, AfterViewInit } from '@angular/core';
+﻿﻿import { Component, inject, signal, AfterViewInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { NgFor, NgIf, DecimalPipe, DatePipe, NgClass } from '@angular/common';
+import { NgFor, NgIf, DecimalPipe, DatePipe, PercentPipe, NgClass } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -13,6 +13,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { LiveService } from '../../core/live.service';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -32,20 +33,20 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-election-detail',
   standalone: true,
-  imports: [NgFor, NgIf, DecimalPipe, DatePipe, NgClass, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, FormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, MatProgressBarModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule],
+  imports: [NgFor, NgIf, DecimalPipe, DatePipe, PercentPipe, NgClass, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSnackBarModule, ReactiveFormsModule, FormsModule, MatSelectModule, MatPaginatorModule, MatSortModule, MatProgressBarModule, FilterPresentPipe, MatDatepickerModule, MatNativeDateModule, MatSlideToggleModule],
   template: `
   <div class="page">
-    <h2 *ngIf="!canRegister || editMode()">ElecciÃ³n {{id()}}</h2>
+    <h2 *ngIf="!canRegister || editMode()">Elección {{id()}}</h2>
     <mat-card class="mat-elevation-z1 status-card">
       <div class="status-row">
         <span class="chip status">{{status()}}</span>
         <span class="chip" [ngClass]="statusLocked() ? 'locked' : 'unlocked'">{{ statusLocked() ? 'Registro bloqueado' : 'Registro abierto' }}</span>
-        <span class="chip" [ngClass]="(quorum()?.quorum||0) >= ((electionInfo()?.quorumMinimo ?? electionInfo()?.QuorumMinimo) || 0) ? 'ok' : 'warn'">Quórum: {{ (quorum()?.quorum||0) | percent:'1.0-0' }}</span>
+        <span class="chip" [ngClass]="(quorum()?.quorum||0) >= ((electionInfo()?.quorumMinimo ?? electionInfo()?.QuorumMinimo) || 0) ? 'ok' : 'warn'">Qu�rum: {{ (quorum()?.quorum||0) | percent:'1.0-0' }}</span>
         <span class="muted">Fecha: {{ (electionInfo()?.scheduledAt ?? electionInfo()?.ScheduledAt) | date:'short' }}</span>
       </div>
     </mat-card>
     <mat-card *ngIf="editMode() && canClose && (!quorum() || (quorum()?.present||0) === 0)" class="mat-elevation-z1">
-      <h3>Editar configuraciÃ³n</h3>
+      <h3>Editar configuración</h3>
       <form [formGroup]="editForm" (ngSubmit)="saveEdit()" class="edit-grid">
         <mat-form-field appearance="outline">
           <mat-label>Nombre</mat-label>
@@ -63,10 +64,10 @@ Chart.register(...registerables);
           <input matInput type="time" [value]="editTime()" (input)="onEditTime($any($event.target).value)">
         </mat-form-field>
         <mat-form-field appearance="outline">
-          <mat-label>QuÃ³rum mÃ­nimo (%)</mat-label>
+          <mat-label>Quórum mínimo (%)</mat-label>
           <input matInput type="number" min="0" max="100" formControlName="quorumPct">
         </mat-form-field>
-        <div class="actions">
+                <mat-slide-toggle [checked]="signingRequired" (change)="toggleSigning($event.checked)" *ngIf="canClose">Requerir firma para certificar</mat-slide-toggle><div class="actions">
           <button mat-stroked-button type="button" (click)="cancelEdit()">Cancelar</button>
           <button mat-raised-button color="primary" [disabled]="editForm.invalid">Guardar</button>
         </div>
@@ -79,24 +80,24 @@ Chart.register(...registerables);
           <div><b>Nombre:</b> {{ info.name ?? info.Name }}</div>
           <div><b>Detalles:</b> {{ info.details ?? info.Details }}</div>
           <div><b>Fecha:</b> {{ (info.scheduledAt ?? info.ScheduledAt) | date:'medium' }}</div>
-          <div><b>QuÃ³rum mÃ­nimo:</b> {{ ((info.quorumMinimo ?? info.QuorumMinimo) * 100) | number:'1.0-0' }}%</div>
+          <div><b>Quórum mínimo:</b> {{ ((info.quorumMinimo ?? info.QuorumMinimo) * 100) | number:'1.0-0' }}%</div>
         </div>
       </mat-card>
       <mat-card *ngIf="!editMode()">
-        <h3>QuÃ³rum</h3>
+        <h3>Quórum</h3>
         <div *ngIf="quorum() as q">
           Total: {{q.total}} | Presentes: {{q.present}} | %: {{(q.quorum*100) | number:'1.0-2'}}%
           <mat-progress-bar mode="determinate" [value]="q.quorum*100"></mat-progress-bar>
         </div>
       </mat-card>
 
-      <!-- Solo mostrar en modo ediciÃ³n -->
+      <!-- Solo mostrar en modo edición -->
       <mat-card *ngIf="editMode() && canClose">
-        <h3>Subir padrÃ³n (Excel)</h3>
+        <h3>Subir padrón (Excel)</h3>
         <div class="upload">
           <a mat-stroked-button color="primary" href="/api/elections/padron-template" download>Descargar plantilla Excel</a>
           <input type="file" #padronInput class="hidden" (change)="onPadron($event)" accept=".xlsx,.xls" />
-          <button mat-stroked-button color="primary" type="button" (click)="padronInput.click()">Subir padrÃ³n</button>
+          <button mat-stroked-button color="primary" type="button" (click)="padronInput.click()">Subir padrón</button>
           <span class="file" *ngIf="lastPadronFile">{{ lastPadronFile }}</span>
         </div>
         <div *ngIf="padronUploading()">Subiendo...</div>
@@ -121,7 +122,7 @@ Chart.register(...registerables);
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Acciones</th>
             <td mat-cell *matCellDef="let p">{{p.shares}}</td>
           </ng-container>
-          <!-- Solo mostrar botones de asistencia en modo ediciÃ³n -->
+          <!-- Solo mostrar botones de asistencia en modo edición -->
           <ng-container matColumnDef="attendance" *ngIf="canAttend && editMode()">
             <th mat-header-cell *matHeaderCellDef>Asistencia</th>
             <td mat-cell *matCellDef="let p">
@@ -136,7 +137,7 @@ Chart.register(...registerables);
         <mat-paginator [pageSize]="10" [pageSizeOptions]="[5,10,25,50]"></mat-paginator>
       </mat-card>
 
-      <!-- Solo mostrar asignaciones en modo ediciÃ³n -->
+      <!-- Solo mostrar asignaciones en modo edición -->
       <mat-card *ngIf="editMode() && canClose">
         <h3>Asignaciones</h3>
         <form [formGroup]="assignForm" (ngSubmit)="addAssign()" class="assign-form">
@@ -176,7 +177,7 @@ Chart.register(...registerables);
           <div class="chart-container"><canvas id="res-chart-{{i}}"></canvas></div>
           <table mat-table [dataSource]="q.options" class="mat-elevation-z1">
             <ng-container matColumnDef="text">
-              <th mat-header-cell *matHeaderCellDef>OpciÃ³n</th>
+              <th mat-header-cell *matHeaderCellDef>Opción</th>
               <td mat-cell *matCellDef="let o">{{o.text}}</td>
             </ng-container>
             <ng-container matColumnDef="votes">
@@ -202,7 +203,7 @@ Chart.register(...registerables);
         <h4>{{currentQuestion()?.text}}</h4>
         <mat-form-field appearance="outline" class="full">
           <mat-label>Aplicar a todos</mat-label>
-          <mat-select [value]="globalSelections[currentQuestionId()]" (selectionChange)="applyAll($event.value)" aria-label="Aplicar opciÃ³n a todos">
+          <mat-select [value]="globalSelections[currentQuestionId()]" (selectionChange)="applyAll($event.value)" aria-label="Aplicar opción a todos">
             <mat-option *ngFor="let o of getOptionsForCurrentQuestion()" [value]="o.optionId || o.OptionId">{{o.text}}</mat-option>
           </mat-select>
         </mat-form-field>
@@ -216,9 +217,9 @@ Chart.register(...registerables);
             <td mat-cell *matCellDef="let p">{{p.shares}}</td>
           </ng-container>
           <ng-container matColumnDef="vote">
-            <th mat-header-cell *matHeaderCellDef>OpciÃ³n</th>
+            <th mat-header-cell *matHeaderCellDef>Opción</th>
             <td mat-cell *matCellDef="let p" [ngClass]="{'override': currentSelectionMap()[p.id] !== globalSelections[currentQuestionId()]}">
-              <mat-select [(ngModel)]="currentSelectionMap()[p.id]" placeholder="OpciÃ³n" aria-label="Seleccionar opciÃ³n para {{p.shareholderName}}">
+              <mat-select [(ngModel)]="currentSelectionMap()[p.id]" placeholder="Opción" aria-label="Seleccionar opción para {{p.shareholderName}}">
                 <mat-option *ngFor="let o of getOptionsForCurrentQuestion()" [value]="o.optionId || o.OptionId">{{o.text}}</mat-option>
               </mat-select>
             </td>
@@ -244,8 +245,8 @@ Chart.register(...registerables);
         </div>
       </ng-template>
         <div class="mt8" *ngIf="canClose && !showSummary()">
-<button mat-stroked-button color="warn" (click)="closeVoting()" *ngIf="status()==='VotingOpen'">Cerrar votación</button>
-          <button mat-stroked-button color="warn" (click)="closeElection()">Cerrar elección</button>
+<button mat-stroked-button color="warn" (click)="closeVoting()" *ngIf="status()==='VotingOpen'">Cerrar votaci�n</button>
+          <button mat-stroked-button color="warn" (click)="closeElection()">Cerrar elecci�n</button>
         </div>
     </mat-card>
   </div>
@@ -307,6 +308,7 @@ export class ElectionDetailComponent implements AfterViewInit {
   
   status = signal<string>('Draft');
   statusLocked = signal<boolean>(false);
+  electionInfo = signal<any|null>(null);
 
   padronCtrl = new FormControl<PadronRow | string>('', Validators.required);
   filteredPadron = signal<PadronRow[]>([]);
@@ -321,10 +323,13 @@ export class ElectionDetailComponent implements AfterViewInit {
 
   assignForm = inject(FormBuilder).group({ userId: ['', Validators.required], role: ['', Validators.required] });
   assignmentRoles = ALLOWED_ASSIGNMENT_ROLES;
+  signingRequired: boolean = false;
 
   constructor(){
     this.id.set(this.route.snapshot.params['id']);
     this.editMode.set(this.route.snapshot.queryParamMap.get('mode')==='edit');
+    // Join live updates for this election
+    this.live.joinElection(this.id());
     // Forzar off si no es admin
     if (this.editMode() && !(this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'))) this.editMode.set(false);
     this.loadAssignments();
@@ -349,6 +354,7 @@ export class ElectionDetailComponent implements AfterViewInit {
       this.filteredPadron.set(base.filter((p:PadronRow) => (p.shareholderName || '').toLowerCase().includes(term)));
     });
   }
+  ngOnDestroy(){ this.live.leaveElection(this.id()); }
   ngAfterViewInit(){
     if (this.paginator) this.padronDS.paginator = this.paginator;
     if (this.sort) this.padronDS.sort = this.sort;
@@ -365,8 +371,8 @@ export class ElectionDetailComponent implements AfterViewInit {
     const fd = new FormData();
     fd.append('file', file);
     this.http.post(`/api/elections/${this.id()}/padron`, fd).subscribe({
-      next: _=> { this.padronUploading.set(false); this.snack.open('PadrÃ³n cargado','OK',{duration:2000}); this.loadPadron(); },
-      error: err=> { this.padronUploading.set(false); this.snack.open('Error al cargar padrÃ³n','OK',{duration:3000}); }
+      next: _=> { this.padronUploading.set(false); this.snack.open('Padrón cargado','OK',{duration:2000}); this.loadPadron(); },
+      error: err=> { this.padronUploading.set(false); this.snack.open('Error al cargar padrón','OK',{duration:3000}); }
     });
   }
 
@@ -376,12 +382,12 @@ export class ElectionDetailComponent implements AfterViewInit {
   addAssign(){
     if (this.assignForm.invalid) return;
     this.http.post(`/api/elections/${this.id()}/assignments`, this.assignForm.value).subscribe({
-      next: _=> { this.assignForm.reset(); this.loadAssignments(); this.snack.open('AsignaciÃ³n creada','OK',{duration:2000}); },
-      error: _=> this.snack.open('Error al crear asignaciÃ³n','OK',{duration:3000})
+      next: _=> { this.assignForm.reset(); this.loadAssignments(); this.snack.open('Asignación creada','OK',{duration:2000}); },
+      error: _=> this.snack.open('Error al crear asignación','OK',{duration:3000})
     });
   }
   removeAssign(assignmentId: string){
-    this.http.delete(`/api/elections/${this.id()}/assignments/${assignmentId}`).subscribe({ next: _=> { this.loadAssignments(); this.snack.open('AsignaciÃ³n eliminada','OK',{duration:2000}); } });
+    this.http.delete(`/api/elections/${this.id()}/assignments/${assignmentId}`).subscribe({ next: _=> { this.loadAssignments(); this.snack.open('Asignación eliminada','OK',{duration:2000}); } });
   }
 
   loadResults(){
@@ -389,7 +395,7 @@ export class ElectionDetailComponent implements AfterViewInit {
       next: d => { this.results.set(d as any[]); if(d && d.length){ this.currentIndex.set(0); this.showSummary.set(false); } setTimeout(()=>this.renderCharts(),0); },
       error: err => {
         if (err.status === 400) {
-          // Votación abierta: cargar preguntas desde la elección
+          // Votaci�n abierta: cargar preguntas desde la elecci�n
           this.http.get<any>(`/api/elections/${this.id()}`).subscribe({
             next: e => {
               const qs = (e?.questions ?? e?.Questions ?? []).map((q:any) => ({
@@ -410,7 +416,13 @@ export class ElectionDetailComponent implements AfterViewInit {
       }
     });
   }
-  loadElectionInfo(){
+    toggleSigning(state: boolean){
+    this.signingRequired = !!state;
+    this.http.put(`/api/elections/${this.id()}`, { signingRequired: this.signingRequired }).subscribe({
+      next: _=> this.snack.open("Firma requerida actualizada","OK",{duration:1500}),
+      error: _=> this.snack.open("No se pudo actualizar firma requerida","OK",{duration:2000})
+    });
+  }loadElectionInfo(){
     this.http.get<any>(`/api/elections/${this.id()}`).subscribe({
       next: e => this.electionInfo.set(e || null),
       error: _ => this.electionInfo.set(null)
@@ -470,7 +482,7 @@ export class ElectionDetailComponent implements AfterViewInit {
     const [h,m] = (this.editSelTime()||'09:00').split(':').map((x:string)=>parseInt(x,10));
     const out = new Date(d); out.setHours(h||0, m||0, 0, 0);
     const dto:any = { name: v.name, scheduledAt: out.toISOString(), quorumMinimo: Math.min(1, Math.max(0, (v.quorumPct||0)/100)) };
-    this.http.put(`/api/elections/${this.id()}`, dto).subscribe({ next: _=> { this.snack.open('ElecciÃ³n actualizada','OK',{duration:1500}); this.router.navigate(['/elections', this.id()]); this.editMode.set(false); this.loadQuorum(); }, error: _=> this.snack.open('Error al actualizar','OK',{duration:2000}) });
+    this.http.put(`/api/elections/${this.id()}`, dto).subscribe({ next: _=> { this.snack.open('Elección actualizada','OK',{duration:1500}); this.router.navigate(['/elections', this.id()]); this.editMode.set(false); this.loadQuorum(); }, error: _=> this.snack.open('Error al actualizar','OK',{duration:2000}) });
   }
   cancelEdit(){ this.router.navigate(['/elections', this.id()]); this.editMode.set(false); }
 
@@ -515,8 +527,8 @@ export class ElectionDetailComponent implements AfterViewInit {
             error: _=> this.snack.open('Error al registrar voto','OK',{duration:2500})
           });
         }
-        else if (err.status === 404) this.snack.open('ElecciÃ³n no encontrada','OK',{duration:2500});
-        else if (err.status === 400) this.snack.open('QuÃ³rum no alcanzado o elecciÃ³n cerrada','OK',{duration:2500});
+        else if (err.status === 404) this.snack.open('Elección no encontrada','OK',{duration:2500});
+        else if (err.status === 400) this.snack.open('Quórum no alcanzado o elección cerrada','OK',{duration:2500});
         else if (err.status === 403) this.snack.open('No tienes permiso para registrar','OK',{duration:2500});
         else this.snack.open('Error al registrar voto','OK',{duration:2500});
       }
@@ -524,7 +536,7 @@ export class ElectionDetailComponent implements AfterViewInit {
   }
   closeElection(){
     this.http.post(`/api/elections/${this.id()}/close`, {}).subscribe({
-      next: _=> { this.snack.open('ElecciÃ³n cerrada','OK',{duration:2000}); this.loadResults(); this.loadElectionInfo(); },
+      next: _=> { this.snack.open('Elección cerrada','OK',{duration:2000}); this.loadResults(); this.loadElectionInfo(); },
       error: _=> this.snack.open('No autorizado para cerrar','OK',{duration:2500})
     });
   }
@@ -546,5 +558,16 @@ export class ElectionDetailComponent implements AfterViewInit {
     const me = this.auth.payload?.sub;
     return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === Roles.VoteRegistrar);
   }
-  get canClose(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
+    get canClose(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
+
+  closeVoting(){
+    this.http.post('/api/elections/' + this.id() + '/status/close-voting', { confirm: true }).subscribe({
+      next: _=> { this.snack.open('Votaci�n cerrada','OK',{duration:2000}); this.loadResults(); this.loadQuorum(); },
+      error: err => {
+        if (err?.error?.error === 'incomplete_votes') this.snack.open('Faltan votos de presentes en alguna pregunta','OK',{duration:2500});
+        else this.snack.open('No se pudo cerrar la votaci�n','OK',{duration:2500});
+      }
+    });
+  }
 }
+

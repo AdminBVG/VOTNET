@@ -38,7 +38,7 @@ namespace BvgAuthApi.Endpoints
                     if (!allowed.Contains(role)) return Err("role_not_allowed", 400);
                     if (!await rm.RoleExistsAsync(role)) return Err("role_not_found", 400);
                 }
-                var u = new ApplicationUser { UserName = dto.UserName, Email = dto.Email, EmailConfirmed = true, IsActive = true };
+                var u = new ApplicationUser { UserName = dto.UserName, Email = dto.Email, EmailConfirmed = true, IsActive = true, LockoutEnabled = true };
                 var res = await um.CreateAsync(u, dto.Password);
                 if (!res.Succeeded) return Err("invalid_user_data", 400, res.Errors);
                 if (!string.IsNullOrEmpty(role)) await um.AddToRoleAsync(u, role);

@@ -42,9 +42,22 @@ namespace BvgAuthApi.Endpoints
                     return Err("user_not_found", 401);
                 }
 
+                // Check lockout status before verifying password
+                if (await um.IsLockedOutAsync(user))
+                {
+                    logger.LogWarning("Auth login failed: user_locked userId={UserId}", user.Id);
+                    return Err("user_locked", 423);
+                }
+
                 var valid = await um.CheckPasswordAsync(user, password);
                 if (!valid)
                 {
+                    await um.AccessFailedAsync(user);
+                    if (await um.IsLockedOutAsync(user))
+                    {
+                        logger.LogWarning("Auth login failed: user_locked userId={UserId}", user.Id);
+                        return Err("user_locked", 423);
+                    }
                     logger.LogWarning("Auth login failed: invalid_password userId={UserId} userName={UserName}", user.Id, user.UserName);
                     return Err("invalid_password", 401);
                 }
@@ -55,6 +68,7 @@ namespace BvgAuthApi.Endpoints
                     return Err("user_inactive", 403);
                 }
 
+                await um.ResetAccessFailedCountAsync(user);
                 var token = await jwt.CreateTokenAsync(user);
                 logger.LogInformation("Auth login success userId={UserId} userName={UserName}", user.Id, user.UserName);
                 return Results.Ok(new { token });
@@ -65,7 +79,9 @@ namespace BvgAuthApi.Endpoints
                 MicrosoftTokenValidator validator,
                 UserManager<ApplicationUser> um,
                 JwtService jwt,
-                ILoggerFactory logFactory) =>
+                ILoggerFactory logFactory,
+                IConfiguration cfg,
+                BvgAuthApi.Services.AppRuntimeSettings runtime) =>
             {
                 var logger = logFactory.CreateLogger("AuthEndpoints");
                 static IResult Err(string code, int status) => Results.Json(new { error = code }, statusCode: status);
@@ -95,11 +111,37 @@ namespace BvgAuthApi.Endpoints
                     return Err("email_not_found", 400);
                 }
 
+                // M365 login must be explicitly enabled via config
+                var aadClient = cfg["AzureAd:ClientId"] ?? string.Empty;
+                var aadTenant = cfg["AzureAd:TenantId"] ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(aadClient) || string.IsNullOrWhiteSpace(aadTenant))
+                {
+                    logger.LogWarning("Auth m365 failed: m365_disabled");
+                    return Err("m365_disabled", 400);
+                }
+
+                // Only allow M365 if configured and user already exists with at least one role
                 var user = await um.FindByEmailAsync(email);
                 if (user is null)
                 {
-                    user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true, IsActive = true };
-                    await um.CreateAsync(user);
+                    logger.LogWarning("Auth m365 failed: user_not_authorized email={Email}", email);
+                    return Err("user_not_authorized", 403);
+                }
+                // Domain whitelist if configured
+                if (runtime.AllowedEmailDomains is { Length: > 0 })
+                {
+                    var domain = email.Split('@').LastOrDefault()?.ToLowerInvariant() ?? string.Empty;
+                    if (!runtime.AllowedEmailDomains.Any(d => string.Equals(d.Trim().ToLowerInvariant(), domain)))
+                    {
+                        logger.LogWarning("Auth m365 failed: domain_not_allowed domain={Domain}", domain);
+                        return Err("user_not_authorized", 403);
+                    }
+                }
+                var roles = await um.GetRolesAsync(user);
+                if (roles is null || roles.Count == 0)
+                {
+                    logger.LogWarning("Auth m365 failed: user_no_role userId={UserId}", user.Id);
+                    return Err("user_not_authorized", 403);
                 }
 
                 if (!user.IsActive)

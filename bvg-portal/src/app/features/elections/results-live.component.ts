@@ -58,6 +58,7 @@ export class ResultsLiveComponent {
   private live = inject(LiveService);
   elections = signal<any[]>([]);
   selectedId: string | null = null;
+  private prevId: string | null = null;
   results = signal<any[]>([]);
   resCols = ['text','votes','percent'];
   charts: Chart[] = [];
@@ -69,8 +70,12 @@ export class ResultsLiveComponent {
 
   loadResults(){
     if (!this.selectedId) { this.results.set([]); return; }
+    if (this.prevId && this.prevId !== this.selectedId) this.live.leaveElection(this.prevId);
+    this.live.joinElection(this.selectedId);
+    this.prevId = this.selectedId;
     this.http.get<any[]>(`/api/elections/${this.selectedId}/results`).subscribe({ next: d => { this.results.set(d); setTimeout(()=>this.renderCharts(),0); } });
   }
+  ngOnDestroy(){ if (this.prevId) this.live.leaveElection(this.prevId); }
 
   renderCharts(){
     this.charts.forEach(c=>c.destroy());

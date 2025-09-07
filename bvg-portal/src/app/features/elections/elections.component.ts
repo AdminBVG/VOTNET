@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { MatTableModule } from '@angular/material/table';
-import { NgIf, NgFor, DatePipe } from '@angular/common';
+import { NgIf, NgFor, NgClass, DatePipe } from '@angular/common';
 import { LiveService } from '../../core/live.service';
 import { AuthService } from '../../core/auth.service';
 import { Router } from '@angular/router';
@@ -19,7 +19,7 @@ interface ElectionDto {
 @Component({
   selector: 'app-elections',
   standalone: true,
-  imports: [MatTableModule, NgIf, NgFor, DatePipe, MatButtonModule, MatTooltipModule],
+  imports: [MatTableModule, NgIf, NgFor, NgClass, DatePipe, MatButtonModule, MatTooltipModule],
   template: `
   <div class="page">
     <h2>Historial de elecciones</h2>

@@ -32,12 +32,18 @@ namespace BvgAuthApi.Seed
             var pass  = Normalize(cfg["Seed:AdminPassword"], "Admin!123");
             var envHost = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
             var resetSrc = Environment.GetEnvironmentVariable("ADMIN_RESET") ?? cfg["Seed:ResetPassword"] ?? "";
-            var reset = true; // Fuerza reset temporal para recuperar acceso
+            // Only reset if explicitly enabled (ADMIN_RESET=true/1/yes)
+            var reset = false;
+            if (!string.IsNullOrWhiteSpace(resetSrc))
+            {
+                var v = resetSrc.Trim().ToLowerInvariant();
+                reset = v is "1" or "true" or "yes" or "y";
+            }
             var user  = await um.FindByEmailAsync(email);
             Console.WriteLine($"[SEED] Admin email={email}, reset={reset}, exists={(user!=null)}");
             if (user is null)
             {
-                user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true, IsActive = true };
+                user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true, IsActive = true, LockoutEnabled = true };
                 var res = await um.CreateAsync(user, pass);
                 Console.WriteLine($"[SEED] Create admin result: {string.Join(',', res.Errors.Select(e => e.Code))} success={res.Succeeded}");
                 if (res.Succeeded)
@@ -87,7 +93,9 @@ namespace BvgAuthApi.Seed
                     ""NewAttendance"" integer NOT NULL,
                     ""UserId"" text NOT NULL,
                     ""Reason"" text NULL,
-                    ""Timestamp"" timestamptz NOT NULL
+                    ""Timestamp"" timestamptz NOT NULL,
+                    ""PrevHash"" text NULL,
+                    ""SelfHash"" text NULL
                 );
                 CREATE INDEX IF NOT EXISTS ""IX_AttendanceLogs_ElectionId"" ON ""AttendanceLogs""(""ElectionId"");
                 CREATE INDEX IF NOT EXISTS ""IX_AttendanceLogs_PadronEntryId"" ON ""AttendanceLogs""(""PadronEntryId"");

@@ -71,6 +71,7 @@ export class AttendanceRequirementsComponent{
   rows = signal<PadronRow[]>([]);
   constructor(){
     this.load();
+    this.live.joinElection(this.id);
     // Live updates: acta uploaded and attendance changes
     this.live.onActaUploaded(p => {
       if (p && p.ElectionId === this.id){
@@ -85,6 +86,7 @@ export class AttendanceRequirementsComponent{
       }
     });
   }
+  ngOnDestroy(){ this.live.leaveElection(this.id); }
   load(){ 
     this.http.get<PadronRow[]>(`/api/elections/${this.id}/padron`).subscribe({ 
       next: d=> {

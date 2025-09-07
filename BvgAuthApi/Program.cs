@@ -85,11 +85,15 @@ builder.Services
     .AddIdentityCore<ApplicationUser>(o =>
     {
         o.User.RequireUniqueEmail = true;
-        o.Password.RequiredLength = 6;
-        o.Password.RequireNonAlphanumeric = false;
-        o.Password.RequireUppercase = false;
-        o.Password.RequireLowercase = false;
+        // Harden password and lockout policies
+        o.Password.RequiredLength = 10;
+        o.Password.RequireNonAlphanumeric = true;
+        o.Password.RequireUppercase = true;
+        o.Password.RequireLowercase = true;
         o.Password.RequireDigit = true;
+        o.Lockout.AllowedForNewUsers = true;
+        o.Lockout.MaxFailedAccessAttempts = 5;
+        o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<BvgDbContext>();
@@ -116,6 +120,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = key,
             ClockSkew = TimeSpan.FromSeconds(30)
         };
+        // Allow SignalR WebSocket auth via access_token query string
+        o.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"].ToString();
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/live"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(opt =>
@@ -133,6 +151,18 @@ builder.Services.AddScoped<MetricsService>();
 builder.Services.AddHostedService<AutoOpenService>();
 builder.Services.Configure<AzureAdOptions>(builder.Configuration.GetSection("AzureAd"));
 builder.Services.AddSingleton<MicrosoftTokenValidator>();
+builder.Services.AddSingleton<SigningStore>();
+// Runtime settings (CSP, Signing)
+var runtime = new AppRuntimeSettings
+{
+    Csp = builder.Configuration["Security:Csp"] ?? "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
+    SigningDefaultPfxPath = builder.Configuration["Signing:DefaultPfxPath"] ?? string.Empty,
+    SigningDefaultPfxPassword = builder.Configuration["Signing:DefaultPfxPassword"] ?? string.Empty,
+    SigningRequireForCertification = bool.TryParse(builder.Configuration["Signing:RequireForCertification"], out var req) && req,
+    AllowedEmailDomains = (builder.Configuration["Security:AllowedEmailDomains"] ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+};
+builder.Services.AddSingleton(runtime);
 
 // CORS
 builder.Services.AddCors(o =>
@@ -187,24 +217,38 @@ app.UseAntiforgery();
 // Serve default static files from wwwroot (for sample dashboard)
 app.UseStaticFiles();
 
-app.MapSwagger();
-app.UseSwaggerUI();
-
-// Static files for uploads (storage)
-var uploadsRoot = Path.Combine(app.Environment.ContentRootPath, builder.Configuration["Storage:Root"] ?? "uploads");
-Directory.CreateDirectory(uploadsRoot);
-app.UseStaticFiles(new StaticFileOptions
+// Basic security headers
+app.Use(async (ctx, next) =>
 {
-    FileProvider = new PhysicalFileProvider(uploadsRoot),
-    RequestPath = "/uploads"
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    ctx.Response.Headers["X-Frame-Options"] = "DENY";
+    ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
+    if (!string.IsNullOrWhiteSpace(runtime.Csp))
+        ctx.Response.Headers["Content-Security-Policy"] = runtime.Csp;
+    if (ctx.Request.IsHttps)
+        ctx.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    await next();
 });
 
-app.MapHub<LiveHub>("/hubs/live");
+if (app.Environment.IsDevelopment())
+{
+    app.MapSwagger();
+    app.UseSwaggerUI();
+}
+
+// Private storage root for uploads (actas), served only via authorized endpoints
+var uploadsRoot = Path.Combine(app.Environment.ContentRootPath, builder.Configuration["Storage:Root"] ?? "uploads");
+Directory.CreateDirectory(uploadsRoot);
+
+// Secure SignalR hub: require authentication
+app.MapHub<LiveHub>("/hubs/live").RequireAuthorization();
 
 app.MapAuth();
 app.MapUserAdmin();
 app.MapElections();
 app.MapReports();
+app.MapAudit();
+app.MapSigning();
 app.MapConfig();
 if (app.Environment.IsDevelopment()) app.MapDebug();
 

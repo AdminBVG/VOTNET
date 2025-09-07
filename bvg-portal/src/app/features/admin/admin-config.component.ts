@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+﻿import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
@@ -7,14 +7,16 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
+import { NgIf } from '@angular/common';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 @Component({
   selector: 'app-admin-config',
   standalone: true,
-  imports: [ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule, MatDividerModule],
+  imports: [ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule, MatDividerModule, MatSlideToggleModule, NgIf],
   template: `
   <div class="page">
-    <h2>Configuración</h2>
+    <h2>ConfiguraciÃ³n</h2>
     <mat-card>
       <form [formGroup]="form" (ngSubmit)="save()" class="cfg-form">
         <h3>Storage</h3>
@@ -60,6 +62,20 @@ import { MatDividerModule } from '@angular/material/divider';
           <mat-label>Logo URL</mat-label>
           <input matInput formControlName="logoUrl">
         </mat-form-field>
+        <h3>Seguridad</h3>
+        <mat-form-field appearance="outline" class="logo-field">
+          <mat-label>Content-Security-Policy</mat-label>
+          <textarea matInput formControlName="csp" rows="3" placeholder="default-src 'self'; ..."></textarea>
+        </mat-form-field>
+        <h3>Firma Digital</h3>
+        <mat-slide-toggle formControlName="signingRequire">Requerir firma para certificar</mat-slide-toggle>
+        <div class="pfx">
+          <input type="file" #pfx accept=".pfx" class="hidden" (change)="onPfx(pfx.files?.[0]||null)">
+          <mat-form-field appearance="outline"><mat-label>Alias del perfil</mat-label><input matInput formControlName="signingAlias" placeholder="ej: Junta2025"></mat-form-field><mat-form-field appearance="outline"><mat-label>Contraseña del PFX</mat-label><input matInput type="password" formControlName="pfxPassword"></mat-form-field>
+          <button mat-stroked-button type="button" (click)="pfx.click()">Seleccionar PFX</button>
+          <button mat-raised-button color="primary" type="button" (click)="uploadPfx()" [disabled]="!pfxFile">Subir PFX</button>
+          <div class="muted" *ngIf="pfxPath">PFX cargado: {{pfxPath}}</div>
+        </div>
         <div class="actions">
           <button mat-raised-button color="primary" [disabled]="form.invalid">Guardar</button>
         </div>
@@ -74,6 +90,7 @@ import { MatDividerModule } from '@angular/material/divider';
     h3{ grid-column:1 / -1; margin-top:8px }
     mat-divider{ grid-column:1 / -1 }
     .actions{ grid-column: 1 / -1; justify-self:end; margin-top:12px }
+    .pfx{ display:flex; align-items:center; gap:8px; grid-column: 1 / -1 }
     .note{ margin-top:8px; opacity:.75; font-size:13px }
   `]
 })
@@ -85,10 +102,17 @@ export class AdminConfigComponent{
     storageRoot: ['', Validators.required],
     host: [''], port: [25], user: [''], from: [''],
     tenantId: [''], clientId: [''], clientSecret: [''],
-    logoUrl: ['']
+    logoUrl: [''],
+    csp: [''],
+    signingRequire: [false],
+    pfxPassword: [''],
+    signingAlias: ['']
   });
+  pfxFile: File | null = null;
+  pfxPath: string = '';
+  profiles: any[] = [];
   constructor(){ this.load(); }
-  load(){ this.http.get<any>(`/api/config/`).subscribe(cfg=>{
+  load(){ this.http.get<any>(`/api/config/admin`).subscribe(cfg=>{
     this.form.patchValue({
       storageRoot: cfg.storageRoot || '',
       host: cfg.smtp?.host || '',
@@ -98,9 +122,16 @@ export class AdminConfigComponent{
       tenantId: cfg.azureAd?.tenantId || '',
       clientId: cfg.azureAd?.clientId || '',
       clientSecret: cfg.azureAd?.clientSecret || '',
-      logoUrl: cfg.branding?.logoUrl || ''
+      logoUrl: cfg.branding?.logoUrl || '',
+      csp: cfg.security?.csp || '',
+      signingRequire: !!cfg.signing?.requireForCertification
     });
+    this.pfxPath = cfg.signing?.defaultPfxPath || '';
+    this.loadProfiles();
   }); }
-  save(){ const v = this.form.value as any; const dto = { storageRoot: v.storageRoot, smtp: { host: v.host, port: v.port, user: v.user, from: v.from }, azureAd: { tenantId: v.tenantId, clientId: v.clientId, clientSecret: v.clientSecret }, branding: { logoUrl: v.logoUrl } }; this.http.put(`/api/config/`, dto).subscribe({ next: _=> this.snack.open('Guardado','OK',{duration:1500}), error: _=> this.snack.open('Error al guardar','OK',{duration:2000}) }); }
+  loadProfiles(){ this.http.get<any[]>(`/api/signing/profiles`).subscribe({ next: d=> this.profiles = d || [], error: _=> this.profiles = [] }); }
+  save(){ const v = this.form.value as any; const dto = { storageRoot: v.storageRoot, smtp: { host: v.host, port: v.port, user: v.user, from: v.from }, azureAd: { tenantId: v.tenantId, clientId: v.clientId, clientSecret: v.clientSecret }, branding: { logoUrl: v.logoUrl }, security: { csp: v.csp }, signing: { requireForCertification: !!v.signingRequire, defaultPfxPath: this.pfxPath } }; this.http.put(`/api/config/`, dto).subscribe({ next: _=> this.snack.open('Guardado','OK',{duration:1500}), error: _=> this.snack.open('Error al guardar','OK',{duration:2000}) }); }
+  onPfx(f: File | null){ this.pfxFile = f; }
+  uploadPfx(){ if (!this.pfxFile) return; const fd = new FormData(); fd.append('file', this.pfxFile); fd.append('password', this.form.value.pfxPassword || ''); fd.append('alias', this.form.value.signingAlias || 'default'); this.http.post<any>(`/api/signing/profiles`, fd).subscribe({ next: _=> { this.snack.open('Perfil cargado','OK',{duration:1500}); this.loadProfiles(); }, error: _=> this.snack.open('Error al cargar perfil','OK',{duration:2000}) }); }
 }
 

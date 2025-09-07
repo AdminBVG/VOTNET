@@ -4,15 +4,18 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
-import { NgIf } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
+import { MatBadgeModule } from '@angular/material/badge';
+import { NgIf, NgFor } from '@angular/common';
 import { AuthService } from '../core/auth.service';
 import { ThemeService } from '../core/theme.service';
 import { ConfigService } from '../core/config.service';
+import { LiveService } from '../core/live.service';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, MatToolbarModule, MatButtonModule, MatMenuModule, MatDividerModule, NgIf],
+  imports: [RouterOutlet, RouterLink, MatToolbarModule, MatButtonModule, MatMenuModule, MatDividerModule, MatIconModule, MatBadgeModule, NgIf, NgFor],
   template: `
   <mat-toolbar>
     <a routerLink="/dashboard" class="brand-link" aria-label="Ir al inicio">
@@ -30,6 +33,19 @@ import { ConfigService } from '../core/config.service';
     </mat-menu>
     <a mat-button routerLink="/users" *ngIf="isGlobalAdmin">Usuarios</a>
     <a mat-button routerLink="/config" *ngIf="isGlobalAdmin">Configuración</a>
+    <button mat-icon-button [matMenuTriggerFor]="notifMenu" aria-label="Notificaciones">
+      <mat-icon matBadge="{{unread}}" [matBadgeHidden]="unread===0" matBadgeColor="warn">notifications</mat-icon>
+    </button>
+    <mat-menu #notifMenu="matMenu">
+      <div class="notif-list" *ngIf="notifications.length; else emptyN">
+        <button mat-menu-item *ngFor="let n of notifications; let i = index" (click)="mark(i)"><mat-icon>{{ n.type==='error' ? 'error' : (n.type==='warn' ? 'warning' : 'info') }}</mat-icon> {{n.message}}</button>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="clear()">Limpiar</button>
+      </div>
+      <ng-template #emptyN>
+        <button mat-menu-item disabled>Sin notificaciones</button>
+      </ng-template>
+    </mat-menu>
     <button mat-stroked-button color="primary" (click)="toggleTheme()">Tema: {{ theme() }}</button>
     <button mat-button (click)="logout()">Salir</button>
   </mat-toolbar>
@@ -80,6 +96,9 @@ export class ShellComponent {
   private auth = inject(AuthService);
   private themeSvc = inject(ThemeService);
   cfg = inject(ConfigService);
+  notifications: { type: 'info'|'warn'|'error', message: string }[] = [];
+  unread = 0;
+  private live = inject(LiveService);
   logout(){ this.auth.logout(); }
   year = new Date().getFullYear();
   get isGlobalAdmin(){ return this.auth.hasRole('GlobalAdmin'); }
@@ -90,7 +109,15 @@ export class ShellComponent {
       // Asegurar cookie/token XSRF para las peticiones mutantes
       this.auth.ensureXsrfToken().subscribe({ next: _=>{}, error: _=>{} });
     }
+    this.live.onSystemNotification(n => {
+      if (!n || !n.Message) return;
+      const type = (n.Type || 'info').toLowerCase();
+      this.notifications.unshift({ type: (type==='error'?'error': type==='warn'?'warn':'info') as any, message: n.Message });
+      this.unread = this.unread + 1;
+    });
   }
   theme(){ return this.themeSvc.current() === 'dark' ? 'Oscuro' : 'Claro'; }
   toggleTheme(){ this.themeSvc.toggle(); }
+  mark(i: number){ if (i>=0 && i < this.notifications.length) { this.notifications.splice(i,1); this.unread = Math.max(0, this.unread-1); } }
+  clear(){ this.notifications = []; this.unread = 0; }
 }

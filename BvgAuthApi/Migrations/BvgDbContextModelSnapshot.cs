@@ -123,7 +123,7 @@ namespace BvgAuthApi.Migrations
                 });
 
             modelBuilder.Entity("BvgAuthApi.Models.Election", b =>
-                {
+            {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
@@ -170,6 +170,13 @@ namespace BvgAuthApi.Migrations
 
                     b.Property<DateTimeOffset?>("LastStatusChangedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("SigningRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SigningProfile")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("Id");
 

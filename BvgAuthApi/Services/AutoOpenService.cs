@@ -53,6 +53,7 @@ public class AutoOpenService : BackgroundService
                     await db.SaveChangesAsync(stoppingToken);
                     await hub.Clients.Group($"election-{e.Id}").SendAsync("statusChanged", new { ElectionId = e.Id, Status = e.Status.ToString() }, cancellationToken: stoppingToken);
                     await hub.Clients.Group($"election-{e.Id}").SendAsync("attendanceLockChanged", new { ElectionId = e.Id, Locked = false }, cancellationToken: stoppingToken);
+                    await hub.Clients.Group($"election-{e.Id}").SendAsync("systemNotification", new { Type = "info", Message = $"Registro abierto automáticamente para la elección {e.Name}", ElectionId = e.Id }, cancellationToken: stoppingToken);
                     _log.LogInformation("[AutoOpen] Opened registration for {ElectionId}", e.Id);
                 }
             }
@@ -64,4 +65,3 @@ public class AutoOpenService : BackgroundService
         }
     }
 }
-
