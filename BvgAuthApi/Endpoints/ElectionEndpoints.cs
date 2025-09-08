@@ -214,11 +214,18 @@ namespace BvgAuthApi.Endpoints
                             return Err("incomplete_results", 400);
                 // Optional: require signing configured
                 var requireSign = e.SigningRequired || runtime.SigningRequireForCertification || cfg.GetValue<bool>("Signing:RequireForCertification");
+                // If election explicitly requires signing, a per-election profile must be set
+                if (e.SigningRequired && string.IsNullOrWhiteSpace(e.SigningProfile))
+                    return Err("signing_profile_missing", 400);
                 if (requireSign)
                 {
-                    var pfxPath = string.IsNullOrWhiteSpace(runtime.SigningDefaultPfxPath) ? cfg["Signing:DefaultPfxPath"] ?? string.Empty : runtime.SigningDefaultPfxPath;
-                    if (string.IsNullOrWhiteSpace(pfxPath) || !System.IO.File.Exists(pfxPath))
-                        return Err("signing_not_configured", 500);
+                    // If using per-election profile, trust it at signing time; otherwise ensure default PFX exists
+                    if (string.IsNullOrWhiteSpace(e.SigningProfile))
+                    {
+                        var pfxPath = string.IsNullOrWhiteSpace(runtime.SigningDefaultPfxPath) ? cfg["Signing:DefaultPfxPath"] ?? string.Empty : runtime.SigningDefaultPfxPath;
+                        if (string.IsNullOrWhiteSpace(pfxPath) || !System.IO.File.Exists(pfxPath))
+                            return Err("signing_not_configured", 500);
+                    }
                 }
                 e.Status = ElectionStatus.Certified;
                 e.CertifiedAt = DateTimeOffset.UtcNow;
@@ -970,15 +977,22 @@ namespace BvgAuthApi.Endpoints
                 var oldAtt = entry.Attendance;
                 entry.Attendance = newAtt;
                 var reason = body.TryGetProperty("reason", out var reasonProp) && reasonProp.ValueKind == JsonValueKind.String ? reasonProp.GetString() : null;
-                db.AttendanceLogs.Add(new AttendanceLog
+                // Append immutable attendance log with PrevHash/SelfHash
+                var last = await db.AttendanceLogs.Where(l => l.ElectionId == id)
+                    .OrderByDescending(l => l.Timestamp).Select(l => new { l.SelfHash }).FirstOrDefaultAsync();
+                var prev = last?.SelfHash ?? string.Empty;
+                var log = new AttendanceLog
                 {
                     ElectionId = id,
                     PadronEntryId = padronId,
                     OldAttendance = oldAtt,
                     NewAttendance = entry.Attendance,
                     UserId = userId,
-                    Reason = reason
-                });
+                    Reason = reason,
+                    PrevHash = prev
+                };
+                log.SelfHash = ComputeLogHash(log);
+                db.AttendanceLogs.Add(log);
                 await db.SaveChangesAsync();
                 // Broadcast per-row update and quorum summary (optional)
                 await hub.Clients.Group($"election-{id}").SendAsync("attendanceUpdated", new { ElectionId = id, PadronId = padronId, Attendance = entry.Attendance.ToString() });

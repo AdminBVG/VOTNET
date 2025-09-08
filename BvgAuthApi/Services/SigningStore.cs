@@ -30,17 +30,19 @@ public class SigningStore
         _protector = dp.CreateProtector("SigningStore");
         _dir = Path.Combine(_env.ContentRootPath, "data", "certs");
         Directory.CreateDirectory(_dir);
-        _indexFile = Path.Combine(_dir, "profiles.json");
+        _indexFile = Path.Combine(_dir, "index.json");
         Load();
     }
 
     private void Load()
     {
-        if (File.Exists(_indexFile))
+        var legacyFile = Path.Combine(_dir, "profiles.json");
+        var fileToRead = File.Exists(_indexFile) ? _indexFile : (File.Exists(legacyFile) ? legacyFile : _indexFile);
+        if (File.Exists(fileToRead))
         {
             try
             {
-                var json = File.ReadAllText(_indexFile);
+                var json = File.ReadAllText(fileToRead);
                 _profiles = JsonSerializer.Deserialize<List<SigningProfile>>(json) ?? new List<SigningProfile>();
             }
             catch { _profiles = new List<SigningProfile>(); }
@@ -51,6 +53,8 @@ public class SigningStore
     {
         var json = JsonSerializer.Serialize(_profiles, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(_indexFile, json);
+        // keep legacy filename in sync for backward compatibility
+        try { File.WriteAllText(Path.Combine(_dir, "profiles.json"), json); } catch { }
     }
 
     public IEnumerable<SigningProfile> List() => _profiles.Select(p => new SigningProfile

@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { MatCardModule } from '@angular/material/card';
 import { NgIf, DatePipe, AsyncPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
@@ -8,10 +9,10 @@ import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgIf, DatePipe, AsyncPipe],
+  imports: [MatCardModule, NgIf, DatePipe, AsyncPipe],
   template: `
   <div class="dash">
-    <div class="hero rounded-2xl border border-gray-200 bg-white shadow-card">
+    <mat-card class="hero" appearance="outlined">
       <div class="hero-left">
         <h2>Bienvenido al Portal de Votaciones</h2>
         <p class="sub">Mantente al día con el estado de tus procesos.</p>
@@ -49,7 +50,7 @@ import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
       <div class="hero-right">
         <img src="assets/vote-hero.png" alt="votaciones" />
       </div>
-    </div>
+    </mat-card>
   </div>
   `,
   styles: [`

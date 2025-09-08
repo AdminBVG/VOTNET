@@ -3,44 +3,33 @@ import { NgIf } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
 import { ConfigService } from '../../core/config.service';
+import { UiButtonDirective } from '../../ui/button.directive';
+import { UiInputDirective } from '../../ui/input.directive';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, NgIf],
+  imports: [ReactiveFormsModule, NgIf, UiButtonDirective, UiInputDirective],
   template: `
-  <div class="login-container">
-    <img [src]="cfg.logoUrl()" class="logo" alt="Logo"/>
-    <mat-card>
-      <h2>Iniciar sesión</h2>
-      <form [formGroup]="form" (ngSubmit)="submit()" class="login-form">
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>Usuario</mat-label>
-          <input matInput formControlName="userName" />
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>Contraseña</mat-label>
-          <input matInput type="password" formControlName="password" />
-        </mat-form-field>
-        <button mat-raised-button color="primary" class="full" [disabled]="form.invalid || loading()">Entrar</button>
-        <button mat-stroked-button type="button" class="full" (click)="loginMicrosoft()" [disabled]="loading()">Iniciar con Microsoft</button>
-        <div class="error" *ngIf="error()">{{error()}}</div>
+  <div class="min-h-screen flex items-center justify-center bg-surface">
+    <img [src]="cfg.logoUrl()" class="fixed top-6 left-6 h-12" alt="Logo"/>
+    <div class="card w-[320px]">
+      <h2 class="text-lg font-semibold mb-2">Iniciar sesión</h2>
+      <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-2">
+        <label class="text-xs opacity-80">Usuario</label>
+        <input uiInput formControlName="userName" />
+        <label class="text-xs opacity-80">Contraseña</label>
+        <input uiInput type="password" formControlName="password" />
+        <button uiBtn="primary" [disabled]="form.invalid || loading()">Entrar</button>
+        <button uiBtn="secondary" type="button" (click)="loginMicrosoft()" [disabled]="loading()">Iniciar con Microsoft</button>
+        <div class="text-sm text-red-700" *ngIf="error()">{{error()}}</div>
       </form>
-    </mat-card>
+    </div>
   </div>
   `,
   styles: [`
-    .login-container{ position:relative; min-height:100vh; display:flex; justify-content:center; align-items:center; }
-    .login-form{ display:flex; flex-direction:column; align-items:stretch; gap:12px }
-    .full{ width:280px }
-    mat-card{ padding:32px }
-    .logo{ position:absolute; top:24px; left:24px; height:48px }
-    .error{ color:#c62828; margin-top:8px }
+    .card{ padding:32px; background:#fff; border:1px solid #eaeef5; border-radius:16px; box-shadow: 0 8px 24px rgba(0,0,0,.05) }
   `]
 })
 export class LoginComponent {
@@ -66,11 +55,10 @@ export class LoginComponent {
       userName: (this.form.value.userName || '').trim(),
       password: (this.form.value.password || '').trim()
     };
-    // Eliminar tokens previos para evitar estados raros
     localStorage.removeItem('token');
     this.auth.login(payload as any).subscribe({
       next: r => { this.auth.setToken(r.token); this.router.navigateByUrl('/'); },
-      error: err => { this.error.set('Credenciales inválidas'); this.loading.set(false); }
+      error: _ => { this.error.set('Credenciales inválidas'); this.loading.set(false); }
     });
   }
 
@@ -79,7 +67,8 @@ export class LoginComponent {
     this.error.set(null);
     this.auth.loginWithMicrosoft().subscribe({
       next: r => { this.auth.setToken(r.token); this.router.navigateByUrl('/'); },
-      error: err => { this.error.set('Error de Microsoft'); this.loading.set(false); }
+      error: _ => { this.error.set('Error de Microsoft'); this.loading.set(false); }
     });
   }
 }
+

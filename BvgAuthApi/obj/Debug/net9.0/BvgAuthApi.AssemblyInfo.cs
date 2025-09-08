@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BvgAuthApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a5498a4c6448a64686e55565fc7a33605a81e749")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5c8b2b5ed4c7695934614e32c7d4c2cfd7ac06e0")]
 [assembly: System.Reflection.AssemblyProductAttribute("BvgAuthApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BvgAuthApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -4,12 +4,10 @@ import { HttpClient } from '@angular/common/http';
 import { LiveService } from '../../core/live.service';
 import { NgIf, NgFor, NgStyle } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSelectModule } from '@angular/material/select';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { UiButtonDirective } from '../../ui/button.directive';
+import { UiInputDirective } from '../../ui/input.directive';
+import { UiSwitchComponent } from '../../ui/switch.component';
+import { ToastService } from '../../ui/toast/toast.service';
 import { AuthService } from '../../core/auth.service';
 
 interface PadronRow {
@@ -26,16 +24,17 @@ interface PadronRow {
 @Component({
   selector: 'app-attendance-register',
   standalone: true,
-  imports: [NgIf, NgFor, NgStyle, FormsModule, MatTableModule, MatButtonModule, MatSelectModule, MatCheckboxModule, MatSnackBarModule, MatTooltipModule],
+  imports: [NgIf, NgFor, NgStyle, FormsModule, UiButtonDirective, UiInputDirective, UiSwitchComponent],
   template: `
-  <div class="page">
-    <h2>Registro de asistencia</h2>
-    <div class="state">Estado: <strong>{{ locked ? \u0027Cerrada\u0027 : \u0027Abierta\u0027 }}</strong>
-      <button *ngIf="auth.hasRole(\u0027GlobalAdmin\u0027) || auth.hasRole(\u0027VoteAdmin\u0027)" mat-stroked-button color="primary" (click)="toggleLock()">{{ locked ? \u0027Abrir asistencia\u0027 : \u0027Cerrar asistencia\u0027 }}</button>
-      <button *ngIf="(auth.hasRole(\u0027GlobalAdmin\u0027) || auth.hasRole(\u0027VoteAdmin\u0027)) && status===\u0027Draft\u0027" mat-stroked-button color="primary" (click)="openRegistration()">Abrir registro</button>
-      <button *ngIf="(auth.hasRole(\u0027GlobalAdmin\u0027) || auth.hasRole(\u0027VoteAdmin\u0027)) && status===\u0027RegistrationClosed\u0027" mat-stroked-button color="primary" (click)="reopenRegistration()">Reabrir registro</button>
+  <div class="p-4">
+    <h2 class="text-xl font-semibold mb-2">Registro de asistencia</h2>
+    <div class="state flex items-center gap-2 mb-2">Estado: <strong>{{ locked ? 'Cerrada' : 'Abierta' }}</strong>
+      <button uiBtn="secondary" *ngIf="auth.hasRole('GlobalAdmin') || auth.hasRole('VoteAdmin')" (click)="toggleLock()">{{ locked ? 'Abrir asistencia' : 'Cerrar asistencia' }}</button>
+      <button uiBtn="secondary" *ngIf="(auth.hasRole('GlobalAdmin') || auth.hasRole('VoteAdmin')) && status==='Draft'" (click)="openRegistration()">Abrir registro</button>
+      <button uiBtn="secondary" *ngIf="(auth.hasRole('GlobalAdmin') || auth.hasRole('VoteAdmin')) && status==='RegistrationClosed'" (click)="reopenRegistration()">Reabrir registro</button>
     </div>
-    <div class="charts" *ngIf="rows().length">
+
+    <div class="charts my-2" *ngIf="rows().length">
       <div class="donut" [ngStyle]="chartStyle()">
         <div class="hole">
           <div class="center">
@@ -52,80 +51,71 @@ interface PadronRow {
         <span class="item"><span class="box ausente"></span> Ausente: {{absentCount()}} personas / {{absentShares()}} acciones</span>
       </div>
     </div>
-    <div class="toolbar">
-      <mat-select [(value)]="bulkStatus" class="status">
-        <mat-option value="Presencial">Presencial</mat-option>
-        <mat-option value="Virtual">Virtual</mat-option>
-        <mat-option value="None">Ausente</mat-option>
-      </mat-select>
-      <button mat-stroked-button (click)="markAll()" [disabled]="!canMark" [matTooltip]="!canMark ? 'Registro no estÃ¡ abierto o asistencia bloqueada' : ''">Marcar todo</button>
-      <button mat-raised-button color="primary" (click)="markSelected()" [disabled]="!canMark || !anySelected()" [matTooltip]="!canMark ? 'Registro no estÃ¡ abierto o asistencia bloqueada' : (!anySelected() ? 'Seleccione al menos un registro' : '')">Marcar seleccionados</button>
+
+    <div class="toolbar flex items-center gap-2 my-2">
+      <select uiInput [(ngModel)]="bulkStatus" class="status w-52">
+        <option value="Presencial">Presencial</option>
+        <option value="Virtual">Virtual</option>
+        <option value="None">Ausente</option>
+      </select>
+      <button uiBtn="secondary" (click)="markAll()" [disabled]="!canMark" title="{{!canMark ? 'Registro no está abierto o asistencia bloqueada' : ''}}">Marcar todo</button>
+      <button uiBtn="primary" (click)="markSelected()" [disabled]="!canMark || !anySelected()" title="{{!canMark ? 'Registro no está abierto o asistencia bloqueada' : (!anySelected() ? 'Seleccione al menos un registro' : '')}}">Marcar seleccionados</button>
     </div>
-    <div class="summary" *ngIf="rows().length">
-      Total: {{total()}} Â· Presenciales: {{count('Presencial')}} Â· Virtuales: {{count('Virtual')}} Â· Ausentes: {{count('None')}}
+
+    <div class="summary text-sm my-2" *ngIf="rows().length">
+      Total: {{total()}} · Presenciales: {{count('Presencial')}} · Virtuales: {{count('Virtual')}} · Ausentes: {{count('None')}}
       <div class="bar"><div class="p" [style.width.%]="presentPct()"></div></div>
     </div>
-    <table mat-table [dataSource]="rows()" class="mat-elevation-z1 compact" *ngIf="rows().length">
-      <ng-container matColumnDef="sel">
-        <th mat-header-cell *matHeaderCellDef></th>
-        <td mat-cell *matCellDef="let r"><mat-checkbox [(ngModel)]="selected[r.id]"></mat-checkbox></td>
-      </ng-container>
-      <ng-container matColumnDef="id">
-        <th mat-header-cell *matHeaderCellDef>ID</th>
-        <td mat-cell *matCellDef="let r">{{r.shareholderId}}</td>
-      </ng-container>
-      <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef>Accionista</th>
-        <td mat-cell *matCellDef="let r">{{r.shareholderName}}</td>
-      </ng-container>
-      <ng-container matColumnDef="legal">
-        <th mat-header-cell *matHeaderCellDef>Representante</th>
-        <td mat-cell *matCellDef="let r">{{ r.legalRepresentative || '-' }}</td>
-      </ng-container>
-      <ng-container matColumnDef="proxy">
-        <th mat-header-cell *matHeaderCellDef>Apoderado</th>
-        <td mat-cell *matCellDef="let r">
-          <a *ngIf="r.proxy && r.hasActa" (click)="view(r)" class="link">{{ r.proxy }}</a>
-          <span *ngIf="r.proxy && !r.hasActa">{{ r.proxy }}</span>
-          <span *ngIf="!r.proxy">-</span>
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="att">
-        <th mat-header-cell *matHeaderCellDef>Asistencia</th>
-        <td mat-cell *matCellDef="let r">
-          <mat-select [value]="r.attendance" (selectionChange)="set(r,$event.value)" [disabled]="locked">
-            <mat-option value="Presencial">Presencial</mat-option>
-            <mat-option value="Virtual">Virtual</mat-option>
-            <mat-option value="None">Ausente</mat-option>
-          </mat-select>
-        </td>
-      </ng-container>
-      <tr mat-header-row *matHeaderRowDef="cols"></tr>
-      <tr mat-row *matRowDef="let row; columns: cols;"></tr>
+
+    <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden compact" *ngIf="rows().length">
+      <thead class="bg-gray-50 text-gray-600">
+        <tr>
+          <th class="p-2"></th>
+          <th class="text-left p-2">ID</th>
+          <th class="text-left p-2">Accionista</th>
+          <th class="text-left p-2">Representante</th>
+          <th class="text-left p-2">Apoderado</th>
+          <th class="text-left p-2">Asistencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of rows()" class="border-t">
+          <td class="p-2"><input type="checkbox" [(ngModel)]="selected[r.id]"></td>
+          <td class="p-2">{{r.shareholderId}}</td>
+          <td class="p-2">{{r.shareholderName}}</td>
+          <td class="p-2">{{ r.legalRepresentative || '-' }}</td>
+          <td class="p-2">
+            <a *ngIf="r.proxy && r.hasActa" (click)="view(r)" class="link">{{ r.proxy }}</a>
+            <span *ngIf="r.proxy && !r.hasActa">{{ r.proxy }} <span class="muted">(sin acta)</span></span>
+            <span *ngIf="!r.proxy" class="muted">-</span>
+          </td>
+          <td class="p-2">
+            <select uiInput [disabled]="locked" [ngModel]="r.attendance" (ngModelChange)="set(r,$event)">
+              <option value="Presencial">Presencial</option>
+              <option value="Virtual">Virtual</option>
+              <option value="None">Ausente</option>
+            </select>
+          </td>
+        </tr>
+      </tbody>
     </table>
-    <div *ngIf="!rows().length" class="muted">Sin padrÃ³n o sin permisos.</div>
   </div>
   `,
   styles: [`
-    .page{ padding:16px }
-    .charts{ display:flex; align-items:center; gap:16px; margin-bottom:8px }
-    .donut{ width:140px; height:140px; border-radius:50%; position:relative; background:#eee }
-    .donut .hole{ position:absolute; inset:18px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center }
-    .donut .center{ text-align:center; line-height:1 }
-    .donut .num{ font-size:20px; font-weight:600 }
-    .donut .num.shares{ font-size:14px; margin-top:4px }
-    .donut .sub{ font-size:11px; opacity:.75 }
-    .legend{ display:flex; gap:12px; flex-wrap:wrap; font-size:13px; opacity:.95 }
-    .legend .box{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px }
+    .donut{ width:180px; height:180px; border-radius:50%; position:relative; box-shadow: inset 0 0 0 10px #fff; display:inline-block }
+    .hole{ position:absolute; inset:15px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center }
+    .center{ text-align:center }
+    .num{ font-weight:700; font-size:20px }
+    .num.shares{ font-size:16px }
+    .sub{ font-size:12px; opacity:.75 }
+    .legend{ display:flex; gap:12px; flex-wrap:wrap; margin-top:8px }
+    .legend .box{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle }
     .legend .presencial{ background:#2e7d32 }
     .legend .virtual{ background:#1565c0 }
     .legend .ausente{ background:#9e9e9e }
-    .toolbar{ display:flex; gap:8px; align-items:center; margin-bottom:8px }
-    .status{ width: 160px }
-    .summary{ margin: 8px 0 4px; font-size:13px; opacity:.9 }
-    .bar{ height:6px; border-radius:4px; background:#eee; overflow:hidden; margin-top:4px; max-width:320px }
-    .bar .p{ height:100%; background: var(--bvg-blue) }
-    table.compact th, table.compact td{ font-size:13px }
+    .bar{ height:8px; background:#eee; border-radius:6px; overflow:hidden; margin-top:4px }
+    .bar .p{ height:100%; background:#2e7d32 }
+    .compact th, .compact td{ font-size:13px }
     .link{ color: var(--bvg-blue); cursor:pointer; text-decoration:underline }
     .muted{ opacity:.75 }
   `]
@@ -134,23 +124,20 @@ export class AttendanceRegisterComponent{
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private live = inject(LiveService);
-  private snack = inject(MatSnackBar);
+  private toast = inject(ToastService);
   auth = inject(AuthService);
   locked = false;
   status: 'Draft'|'RegistrationOpen'|'RegistrationClosed'|'VotingOpen'|'VotingClosed'|'Certified'|string = 'Draft';
   canMark = false;
   id = this.route.snapshot.params['id'];
-  cols = ['sel','id','name','legal','proxy','att'];
   rows = signal<PadronRow[]>([]);
   bulkStatus: 'Presencial'|'Virtual'|'None' = 'Presencial';
   selected: Record<string, boolean> = {};
   constructor(){
     this.load();
     this.live.joinElection(this.id);
-    // Load summary to know lock state
     this.http.get<any>(`/api/elections/${this.id}/attendance/summary`).subscribe({ next: d=> { this.locked = !!d?.locked; this.canMark = (this.status === 'RegistrationOpen') && !this.locked; }, error: _=>{} });
     this.http.get<any>(`/api/elections/${this.id}/status`).subscribe({ next: s=> { const stat = (s?.Status ?? s?.status ?? 'Draft'); const lck = !!(s?.Locked ?? s?.locked ?? false); this.status = stat; this.locked = lck; this.canMark = (stat === 'RegistrationOpen') && !lck; }, error: _=>{} });
-    // Live updates for attendance
     this.live.onAttendanceUpdated(p => {
       if (p && p.ElectionId === this.id){
         const r = this.rows().find(x => x.id === p.PadronId);
@@ -163,15 +150,14 @@ export class AttendanceRegisterComponent{
   load(){
     this.http.get<PadronRow[]>(`/api/elections/${this.id}/padron`).subscribe({
       next: d=> {
-        // Ordenar por ID de accionista numÃ©ricamente
         const sortedData = (d || []).sort((a, b) => {
           const aNum = parseInt(a.shareholderId) || 0;
           const bNum = parseInt(b.shareholderId) || 0;
           return aNum - bNum;
         });
-        this.rows.set(sortedData); 
-        this.selected = {}; 
-      }, 
+        this.rows.set(sortedData);
+        this.selected = {};
+      },
       error: _=> this.rows.set([])
     });
   }
@@ -182,7 +168,7 @@ export class AttendanceRegisterComponent{
         window.open(url, '_blank');
         setTimeout(()=> URL.revokeObjectURL(url), 15000);
       },
-      error: _ => this.snack.open('No se pudo abrir el PDF','OK',{duration:2000})
+      error: _ => this.toast.show('No se pudo abrir el PDF','error',2000)
     });
   }
   presentCount(){ return this.rows().filter(r=>r.attendance==='Presencial').length; }
@@ -200,35 +186,35 @@ export class AttendanceRegisterComponent{
     return { background: g } as any;
   }
   set(r: PadronRow, att: 'Presencial'|'Virtual'|'None'){
-    if (!this.canMark) { this.snack.open('Registro no estÃ¡ abierto o asistencia bloqueada','OK',{duration:1800}); return; }
+    if (!this.canMark) { this.toast.show('Registro no está abierto o asistencia bloqueada','warning',1800); return; }
     this.http.post(`/api/elections/${this.id}/padron/${r.id}/attendance`, { attendance: att === 'Presencial' ? 2 : (att === 'Virtual' ? 1 : 0) }).subscribe({
-      next: _=> { r.attendance = att; this.snack.open('Asistencia actualizada','OK',{duration:1300}); },
-      error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
+      next: _=> { r.attendance = att; this.toast.show('Asistencia actualizada','success',1300); },
+      error: err => this.toast.show(this.mapAttendanceError(err), 'error', 2200)
     });
   }
   anySelected(){ return Object.values(this.selected).some(v=>v); }
   markAll(){
-    if (!this.canMark) { this.snack.open('Registro no estÃ¡ abierto o asistencia bloqueada','OK',{duration:1800}); return; }
+    if (!this.canMark) { this.toast.show('Registro no está abierto o asistencia bloqueada','warning',1800); return; }
     if(!confirm(`Aplicar "${this.bulkStatus}" a todos?`)) return;
     this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, reason: 'Marcación global' }).subscribe({
-      next: _=> { this.snack.open('Marcado masivo aplicado','OK',{duration:1200}); this.load(); },
-      error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
+      next: _=> { this.toast.show('Marcado masivo aplicado','success',1200); this.load(); },
+      error: err => this.toast.show(this.mapAttendanceError(err), 'error', 2200)
     });
   }
   markSelected(){
-    if (!this.canMark) { this.snack.open('Registro no estÃ¡ abierto o asistencia bloqueada','OK',{duration:1800}); return; }
+    if (!this.canMark) { this.toast.show('Registro no está abierto o asistencia bloqueada','warning',1800); return; }
     const ids = Object.keys(this.selected).filter(k=>this.selected[k]); if(!ids.length) return;
     if(!confirm(`Aplicar "${this.bulkStatus}" a ${ids.length} seleccionados?`)) return;
-    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, ids, reason: 'Marcación pÃ¡gina' }).subscribe({
-      next: _=> { this.snack.open('Seleccionados actualizados','OK',{duration:1200}); this.load(); },
-      error: err => this.snack.open(this.mapAttendanceError(err), 'OK', { duration: 2200 })
+    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, ids, reason: 'Marcación página' }).subscribe({
+      next: _=> { this.toast.show('Seleccionados actualizados','success',1200); this.load(); },
+      error: err => this.toast.show(this.mapAttendanceError(err), 'error', 2200)
     });
   }
   toggleLock(){
     const isAdmin = this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin');
     if (!isAdmin) return;
     const url = this.locked ? `/api/elections/${this.id}/attendance/unlock` : `/api/elections/${this.id}/attendance/lock`;
-    this.http.post(url, {}).subscribe({ next: (res:any)=> { this.locked = !!(res?.locked ?? !this.locked); this.snack.open(this.locked ? 'Asistencia cerrada' : 'Asistencia abierta','OK',{duration:1500}); }, error: _=> this.snack.open('Error','OK',{duration:1500}) });
+    this.http.post(url, {}).subscribe({ next: (res:any)=> { this.locked = !!(res?.locked ?? !this.locked); this.toast.show(this.locked ? 'Asistencia cerrada' : 'Asistencia abierta','success',1500); }, error: _=> this.toast.show('Error','error',1500) });
   }
   total(){ return this.rows().length; }
   count(att: 'Presencial'|'Virtual'|'None'){ return this.rows().filter(r=>r.attendance===att).length; }
@@ -237,7 +223,7 @@ export class AttendanceRegisterComponent{
     const code = (err && err.error && err.error.error) ? String(err.error.error) : '';
     switch (code) {
       case 'attendance_closed': return 'La asistencia está cerrada para esta elección.';
-      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elecciÃ³n.';
+      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elección.';
       case 'padron_entry_not_found': return 'No se encontró el registro del padrón.';
       default:
         if (err && err.status === 0) return 'No hay conexión con el servidor.';
@@ -251,19 +237,19 @@ export class AttendanceRegisterComponent{
     if (!isAdmin) return;
     this.http.post('/api/elections/' + this.id + '/status/open-registration', {})
       .subscribe({
-        next: _ => { this.status = 'RegistrationOpen'; this.locked = false; this.canMark = true; this.snack.open('Registro abierto','OK',{duration:1500}); },
-        error: _ => this.snack.open('No se pudo abrir registro','OK',{duration:2000})
+        next: _ => { this.status = 'RegistrationOpen'; this.locked = false; this.canMark = true; this.toast.show('Registro abierto','success',1500); },
+        error: _ => this.toast.show('No se pudo abrir registro','error',2000)
       });
   }
   ngOnDestroy(){ this.live.leaveElection(this.id); }
-
   reopenRegistration(){
     const isAdmin = this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin');
     if (!isAdmin) return;
     this.http.post('/api/elections/' + this.id + '/status/reopen-registration', { confirm: true })
       .subscribe({
-        next: _ => { this.status = 'RegistrationOpen'; this.locked = false; this.canMark = true; this.snack.open('Registro reabierto','OK',{duration:1500}); },
-        error: _ => this.snack.open('No se pudo reabrir registro','OK',{duration:2000})
+        next: _ => { this.status = 'RegistrationOpen'; this.locked = false; this.canMark = true; this.toast.show('Registro reabierto','success',1500); },
+        error: _ => this.toast.show('No se pudo reabrir registro','error',2000)
       });
   }
 }
+

@@ -72,6 +72,39 @@ public static class AuditEndpoints
             return Results.Ok(logs);
         }).RequireAuthorization();
 
+        // Verify immutable chain of AttendanceLogs for the election
+        g.MapGet("/verify", async (Guid id, BvgDbContext db, ClaimsPrincipal user) =>
+        {
+            static IResult Err(string code, int status, object? details = null) => Results.Json(details is null ? new { error = code } : new { error = code, details }, statusCode: status);
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+            var isAdmin = user.IsInRole(AppRoles.GlobalAdmin) || user.IsInRole(AppRoles.VoteAdmin);
+            if (!isAdmin)
+            {
+                var hasAssign = await db.ElectionUserAssignments.AnyAsync(a => a.ElectionId == id && a.UserId == userId && (
+                    a.Role == AppRoles.ElectionObserver || a.Role == AppRoles.AttendanceRegistrar || a.Role == AppRoles.VoteRegistrar));
+                if (!hasAssign) return Err("forbidden", 403);
+            }
+            var logs = await db.AttendanceLogs.Where(l => l.ElectionId == id)
+                .OrderBy(l => l.Timestamp).ThenBy(l => l.Id)
+                .Select(l => new { l.Id, l.ElectionId, l.PadronEntryId, l.OldAttendance, l.NewAttendance, l.UserId, l.Timestamp, l.PrevHash, l.SelfHash })
+                .ToListAsync();
+            string prev = string.Empty;
+            for (int i = 0; i < logs.Count; i++)
+            {
+                var l = logs[i];
+                var payload = $"{l.ElectionId}|{l.PadronEntryId}|{(int)l.OldAttendance}|{(int)l.NewAttendance}|{l.UserId}|{l.Timestamp:O}|{prev}";
+                var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+                var hash = System.Security.Cryptography.SHA256.HashData(bytes);
+                var expected = Convert.ToHexString(hash);
+                if (!string.Equals(expected, l.SelfHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.Json(new { ok = false, index = i, id = l.Id, expected, actual = l.SelfHash, prev }, statusCode: 409);
+                }
+                prev = l.SelfHash ?? string.Empty;
+            }
+            return Results.Ok(new { ok = true, count = logs.Count, lastHash = prev });
+        }).RequireAuthorization();
+
         return app;
     }
 }

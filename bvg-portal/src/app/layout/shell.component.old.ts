@@ -10,7 +10,7 @@ import { LiveService } from '../core/live.service';
   selector: 'app-shell',
   standalone: true,
   imports: [RouterOutlet, RouterLink, NgIf, NgFor],
-  template: `
+    template: `
   <header class="w-full shadow-sm bg-gradient-to-r from-brand-dark to-brand-primary text-white">
     <div class="max-w-7xl mx-auto px-4 h-14 flex items-center gap-4">
       <a routerLink="/dashboard" class="brand-link" aria-label="Ir al inicio">
@@ -21,18 +21,18 @@ import { LiveService } from '../core/live.service';
       <div class="relative" (mouseleave)="elecOpen=false">
         <button class="px-3 py-1.5 rounded-lg hover:bg-white/10" (mouseenter)="elecOpen=true" (click)="elecOpen=!elecOpen">Elecciones</button>
         <div class="absolute right-0 mt-2 bg-white text-gray-900 rounded-xl shadow-lg min-w-56 p-2 border border-gray-100 z-20" *ngIf="elecOpen">
-          <a routerLink="/elections/new" *ngIf="isAdmin" class="menu-item">Crear eleccion</a>
+          <a routerLink="/elections/new" *ngIf="isAdmin" class="menu-item">Crear elección</a>
           <a routerLink="/elections" *ngIf="isAdmin" class="menu-item">Historial de elecciones</a>
           <a routerLink="/elections/live" *ngIf="isAdmin" class="menu-item">Resultados en vivo</a>
           <a routerLink="/attendance" class="menu-item">Mis asignaciones</a>
-          <a routerLink="/votes" class="menu-item">Registrar votacion</a>
+          <a routerLink="/votes" class="menu-item">Registrar votación</a>
         </div>
       </div>
       <a routerLink="/users" *ngIf="isGlobalAdmin" class="px-3 py-1.5 rounded-lg hover:bg-white/10">Usuarios</a>
-      <a routerLink="/config" *ngIf="isGlobalAdmin" class="px-3 py-1.5 rounded-lg hover:bg-white/10">Configuracion</a>
+      <a routerLink="/config" *ngIf="isGlobalAdmin" class="px-3 py-1.5 rounded-lg hover:bg-white/10">Configuración</a>
       <div class="relative" (mouseleave)="notifOpen=false">
         <button class="relative px-3 py-1.5 rounded-lg hover:bg-white/10" (mouseenter)="notifOpen=true" (click)="notifOpen=!notifOpen" aria-label="Notificaciones">
-          <span>ðŸ””</span>
+          <span>??</span>
           <span *ngIf="unread>0" class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1.5">{{unread}}</span>
         </button>
         <div class="absolute right-0 mt-2 bg-white text-gray-900 rounded-xl shadow-lg min-w-72 p-2 border border-gray-100 z-20" *ngIf="notifOpen">
@@ -62,14 +62,14 @@ import { LiveService } from '../core/live.service';
       <div class="col">
         <h4>Enlaces</h4>
         <a href="#" target="_blank" rel="noopener">Sitio web</a>
-        <a href="#" target="_blank" rel="noopener">Politicas</a>
-        <a href="#" target="_blank" rel="noopener">Terminos</a>
+        <a href="#" target="_blank" rel="noopener">Políticas</a>
+        <a href="#" target="_blank" rel="noopener">Términos</a>
       </div>
       <div class="col">
         <h4>Contacto</h4>
         <div>Guayaquil, Ecuador</div>
         <div>Tel: +593 000 000 000</div>
-        <div>Email: info&#64;bvg.ec</div>
+        <div>Email: info@bvg.ec</div>
       </div>
     </div>
     <div class="footer-copy">&copy; {{ year }} BVG. Todos los derechos reservados.</div>
@@ -77,10 +77,9 @@ import { LiveService } from '../core/live.service';
   `,
   styles: [`
     .spacer{flex:1}
-    .active-link{ position:relative }
-    .active-link::after{ content:''; position:absolute; left:8px; right:8px; bottom:4px; height:3px; background:#fff; border-radius:2px; opacity:.9 }
-    .menu-item{ display:block; padding:8px 12px; border-radius:10px; font-size:14px }
-    .menu-item:hover{ background:#f2f5f9 }
+    mat-toolbar { box-shadow: 0 2px 6px rgba(0,0,0,.08) }
+    a[mat-button].active{ position:relative }
+    a[mat-button].active::after{ content:''; position:absolute; left:8px; right:8px; bottom:4px; height:3px; background:#fff; border-radius:2px; opacity:.9 }
     .app-footer{ margin-top:32px; position:relative; background: #0c1524; color:#fff; border-top: 4px solid var(--bvg-blue) }
     .footer-gradient{ position:absolute; inset:0; background: linear-gradient(135deg, #001489 0%, #005EB8 100%); opacity:.22; pointer-events:none }
     .app-footer .footer-inner{ position:relative; display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap:28px; padding:28px; align-items:flex-start }
@@ -105,11 +104,10 @@ export class ShellComponent {
   year = new Date().getFullYear();
   get isGlobalAdmin(){ return this.auth.hasRole('GlobalAdmin'); }
   get isAdmin(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
-  elecOpen = false;
-  notifOpen = false;
   ngOnInit(){
     this.themeSvc.init();
     if (this.auth.isAuthenticated){
+      // Asegurar cookie/token XSRF para las peticiones mutantes
       this.auth.ensureXsrfToken().subscribe({ next: _=>{}, error: _=>{} });
     }
     this.live.onSystemNotification(n => {
@@ -124,3 +122,5 @@ export class ShellComponent {
   mark(i: number){ if (i>=0 && i < this.notifications.length) { this.notifications.splice(i,1); this.unread = Math.max(0, this.unread-1); } }
   clear(){ this.notifications = []; this.unread = 0; }
 }
+
+
