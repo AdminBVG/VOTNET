@@ -1,4 +1,4 @@
-import { Pipe, PipeTransform } from '@angular/core';
+﻿import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({ name: 'filterPresent', standalone: true })
 export class FilterPresentPipe implements PipeTransform {
@@ -7,4 +7,5 @@ export class FilterPresentPipe implements PipeTransform {
     return value.filter(v => (v.attendance ?? v.Attendance) && (v.attendance ?? v.Attendance) !== 'None');
   }
 }
+
 

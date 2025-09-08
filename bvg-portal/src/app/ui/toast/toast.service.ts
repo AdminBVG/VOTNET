@@ -1,4 +1,4 @@
-import { Injectable, Injector } from '@angular/core';
+﻿import { Injectable, Injector } from '@angular/core';
 import { Overlay, OverlayConfig, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { UiToastContainerComponent } from './toast_container.component';
@@ -16,6 +16,7 @@ export class ToastService {
     if (!this.host) {
       const cfg = new OverlayConfig({
         hasBackdrop: false,
+        panelClass: 'overlay-elevated',
         scrollStrategy: this.overlay.scrollStrategies.reposition(),
         positionStrategy: this.overlay.position().global().top('16px').right('16px')
       });
@@ -31,3 +32,4 @@ export class ToastService {
     this.container?.push({ message, type, duration });
   }
 }
+

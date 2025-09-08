@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+﻿import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { NgIf, DatePipe, AsyncPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
@@ -14,28 +14,28 @@ import { Roles, ALLOWED_ASSIGNMENT_ROLES } from '../../core/constants/roles';
     <div class="hero rounded-2xl border border-gray-200 bg-white shadow-card">
       <div class="hero-left">
         <h2>Bienvenido al Portal de Votaciones</h2>
-        <p class="sub">Mantente al día con el estado de tus procesos.</p>
+        <p class="sub">Mantente al dÃ­a con el estado de tus procesos.</p>
 
         <div class="info-grid">
           <div class="info">
             <div class="label">Fecha y hora</div>
-            <div class="value time">{{ now() | date:'fullDate' }} · {{ now() | date:'HH:mm:ss' }}</div>
+            <div class="value time">{{ now() | date:'fullDate' }} Â· {{ now() | date:'HH:mm:ss' }}</div>
           </div>
 
           <div class="info" *ngIf="nextElection() as nx; else noNext">
-            <div class="label">Próxima elección</div>
-            <div class="value">{{ nx.name }} · {{ nx.scheduledAt | date:'medium' }}</div>
+            <div class="label">PrÃ³xima elecciÃ³n</div>
+            <div class="value">{{ nx.name }} Â· {{ nx.scheduledAt | date:'medium' }}</div>
             <div class="countdown" *ngIf="countdown() as cd">Comienza en: {{ cd.d }}d {{ cd.h }}h {{ cd.m }}m {{ cd.s }}s</div>
           </div>
           <ng-template #noNext>
             <div class="info">
-              <div class="label">Próxima elección</div>
-              <div class="value muted">Sin elecciones próximas</div>
+              <div class="label">PrÃ³xima elecciÃ³n</div>
+              <div class="value muted">Sin elecciones prÃ³ximas</div>
             </div>
           </ng-template>
 
           <div class="info">
-            <div class="label">Próximos 7 días</div>
+            <div class="label">PrÃ³ximos 7 dÃ­as</div>
             <div class="value">{{ upcomingCount() }} programadas</div>
           </div>
 
@@ -140,4 +140,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } catch { this.liveConnected.set(false); }
   }
 }
+
 

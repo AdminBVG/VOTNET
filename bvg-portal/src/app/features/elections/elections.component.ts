@@ -1,6 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NgIf, NgFor, NgClass, DatePipe } from '@angular/common';
+import { UiIconComponent } from '../../ui/icon.component';
 import { LiveService } from '../../core/live.service';
 import { AuthService } from '../../core/auth.service';
 import { Router } from '@angular/router';
@@ -17,12 +18,22 @@ interface ElectionDto {
 @Component({
   selector: 'app-elections',
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, DatePipe, UiButtonDirective],
+  imports: [NgIf, NgFor, NgClass, DatePipe, UiButtonDirective, UiIconComponent],
   template: `
   <div class="p-4">
     <h2 class="text-xl font-semibold mb-2">Historial de elecciones</h2>
-    <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden" *ngIf="items().length">
-      <thead class="bg-gray-50 text-gray-600">
+
+    <div *ngIf="loading(); else listOrEmpty">
+      <div class="rounded-2xl border border-gray-200 bg-white shadow-card p-4 mb-3">
+        <div class="skeleton-line w-64 mb-2"></div>
+        <div class="skeleton-line w-full mb-2"></div>
+        <div class="skeleton-line w-5/6"></div>
+      </div>
+    </div>
+
+    <ng-template #listOrEmpty>
+    <table class="table-base table-compact thead-sticky row-zebra" *ngIf="items().length; else empty">
+      <thead>
         <tr>
           <th class="text-left p-2">Nombre</th>
           <th class="text-left p-2">Fecha</th>
@@ -54,7 +65,7 @@ interface ElectionDto {
             <div class="flex flex-wrap gap-2">
               <button uiBtn="primary" size="sm" (click)="open(e)">Ver</button>
               <button uiBtn="secondary" size="sm" (click)="edit(e)" *ngIf="isAdmin">Editar</button>
-              <button uiBtn="secondary" size="sm" (click)="editPadron(e)" *ngIf="isAdmin">Editar Padrón</button>
+              <button uiBtn="secondary" size="sm" (click)="editPadron(e)" *ngIf="isAdmin">Editar PadrÃ³n</button>
               <button uiBtn="primary" size="sm" *ngIf="isAdmin && statuses()[e.id]?.Actions?.CanOpenReg" (click)="openRegistration(e)" [title]="'Abrir registro'">Abrir registro</button>
               <button uiBtn="primary" size="sm" *ngIf="isAdmin && statuses()[e.id]?.Actions?.CanReopenReg" (click)="reopenRegistration(e)" [title]="'Reabrir registro'">Reabrir registro</button>
             </div>
@@ -62,18 +73,25 @@ interface ElectionDto {
         </tr>
       </tbody>
     </table>
-    <div *ngIf="!items().length">No hay datos o no tienes permisos.</div>
+    <ng-template #empty>
+      <div class="rounded-2xl border border-gray-200 bg-white shadow-card p-10 flex flex-col items-center gap-2 text-muted">
+        <ui-icon name="empty" [size]="48"></ui-icon>
+        <div>No hay datos o no tienes permisos.</div>
+      </div>
+    </ng-template>
+    </ng-template>
   </div>
   `,
   styles: []
 })
-export class ElectionsComponent {
+export class ElectionsComponent {`n  private autoOpened = new Set<string>();
   private http = inject(HttpClient);
   private live = inject(LiveService);
   private router = inject(Router);
   private auth = inject(AuthService);
   items = signal<ElectionDto[]>([]);
   statuses = signal<Record<string, any>>({});
+  loading = signal(true);
   cols = ['name','date','status','quorum','actions'];
 
   constructor(){
@@ -82,12 +100,12 @@ export class ElectionsComponent {
   }
   load(){
     this.http.get<ElectionDto[]>(`/api/elections`).subscribe({ next: d=> {
-      this.items.set(d||[]);
+      this.items.set(d||[]); this.loading.set(false);
       const current = { ...this.statuses() } as Record<string, any>;
       (d||[]).forEach(e => {
-        this.http.get<any>(`/api/elections/${e.id}/status`).subscribe({ next: s => { current[e.id] = s; this.statuses.set({ ...current }); } });
+        this.http.get<any>(`/api/elections/${e.id}/status`).subscribe({ next: s => { current[e.id] = s; this.statuses.set({ ...current }); try{ if (this.isAdmin && s?.Actions?.CanOpenReg && !this.autoOpened.has(e.id)){ const now = Date.now(); const sched = new Date(e.scheduledAt).getTime(); if (now >= sched - 30*60*1000){ this.autoOpened.add(e.id); this.openRegistration(e); } } } catch {} } });
       });
-    }, error: ()=> this.items.set([]) });
+    }, error: ()=> { this.items.set([]); this.loading.set(false); } });
   }
   open(row: ElectionDto){ this.router.navigate(['/elections', row.id]); }
   get isAdmin(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
@@ -96,4 +114,7 @@ export class ElectionsComponent {
   openRegistration(row: ElectionDto){ if (!this.isAdmin) return; this.http.post(`/api/elections/${row.id}/status/open-registration`,{}).subscribe({ next: _=> this.load() }); }
   reopenRegistration(row: ElectionDto){ if (!this.isAdmin) return; this.http.post(`/api/elections/${row.id}/status/reopen-registration`,{ confirm:true }).subscribe({ next: _=> this.load() }); }
 }
+
+
+
 

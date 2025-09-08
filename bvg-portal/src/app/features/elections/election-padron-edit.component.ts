@@ -1,10 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { NgFor, NgIf, DecimalPipe } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { UiButtonDirective } from '../../ui/button.directive';
 import { UiInputDirective } from '../../ui/input.directive';
+import { UiIconComponent } from '../../ui/icon.component';
 import { ToastService } from '../../ui/toast/toast.service';
 import { AuthService } from '../../core/auth.service';
 import { PadronRow, sortPadronByNumericId, canDeleteShareholder as canDeleteShareholderFn, getDeleteErrorMessage } from '../../shared/utils/padron.utils';
@@ -12,17 +13,17 @@ import { PadronRow, sortPadronByNumericId, canDeleteShareholder as canDeleteShar
 @Component({
   selector: 'app-election-padron-edit',
   standalone: true,
-  imports: [NgFor, NgIf, DecimalPipe, ReactiveFormsModule, UiButtonDirective, UiInputDirective],
+  imports: [NgFor, NgIf, DecimalPipe, ReactiveFormsModule, UiButtonDirective, UiInputDirective, UiIconComponent],
   template: `
    <div class="p-4">
      <div class="flex items-center justify-between mb-3">
-       <h2 class="text-xl font-semibold">Editar Padrón - Elección {{id()}}</h2>
+       <h2 class="text-xl font-semibold">Editar PadrÃ³n - ElecciÃ³n {{id()}}</h2>
        <button uiBtn="secondary" (click)="goBack()">Volver</button>
      </div>
 
      <div class="rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 p-4 flex items-center gap-2" *ngIf="!canEdit">
-       <span>⚠️</span>
-       <span>No tienes permisos para editar el padrón de esta elección.</span>
+       <ui-icon name="warning" [size]="18"></ui-icon>
+       <span>No tienes permisos para editar el padrÃ³n de esta elecciÃ³n.</span>
      </div>
 
      <div *ngIf="canEdit" class="space-y-3">
@@ -35,26 +36,26 @@ import { PadronRow, sortPadronByNumericId, canDeleteShareholder as canDeleteShar
            </div>
          </div>
          <div class="flex items-center gap-2 mb-3">
-           <button uiBtn="primary" (click)="openAddDialog()">➕ Agregar Accionista</button>
-           <button uiBtn="secondary" (click)="loadPadron()">⟳ Recargar</button>
-           <button uiBtn="secondary" (click)="debugData()">🐞 Debug</button>
+           <button uiBtn="primary" (click)="openAddDialog()"><ui-icon name="plus" [size]="18"></ui-icon> Agregar Accionista</button>
+           <button uiBtn="secondary" (click)="loadPadron()"><ui-icon name="refresh" [size]="18"></ui-icon> Recargar</button>
+           <button uiBtn="secondary" (click)="debugData()"><ui-icon name="bug" [size]="18"></ui-icon> Debug</button>
          </div>
 
          <div *ngIf="!padron().length" class="text-center text-gray-600 py-10">
-           <div class="text-4xl mb-2">👥</div>
+           <div class="flex justify-center mb-2 text-gray-400"><ui-icon name="empty" [size]="48"></ui-icon></div>
            <p>No hay accionistas cargados</p>
            <div class="mt-3"><button uiBtn="primary" (click)="openAddDialog()">Agregar Primer Accionista</button></div>
          </div>
 
-         <table *ngIf="padron().length" class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
-           <thead class="bg-gray-50 text-gray-600">
+         <table *ngIf="padron().length" class="table-base table-compact thead-sticky row-zebra">
+           <thead>
              <tr>
-               <th class="text-left p-2">ID</th>
-               <th class="text-left p-2">Nombre</th>
-               <th class="text-left p-2">Acciones</th>
-               <th class="text-left p-2">Representante Legal</th>
-               <th class="text-left p-2">Apoderado</th>
-               <th class="text-left p-2">Acciones</th>
+               <th class="text-left p-2" scope="col">ID</th>
+               <th class="text-left p-2" scope="col">Nombre</th>
+               <th class="text-left p-2" scope="col">Acciones</th>
+               <th class="text-left p-2" scope="col">Representante Legal</th>
+               <th class="text-left p-2" scope="col">Apoderado</th>
+               <th class="text-left p-2" scope="col">Acciones</th>
              </tr>
            </thead>
            <tbody>
@@ -66,8 +67,8 @@ import { PadronRow, sortPadronByNumericId, canDeleteShareholder as canDeleteShar
                <td class="p-2">{{row.proxy || '-'}}</td>
                <td class="p-2">
                  <div class="flex items-center gap-1">
-                   <button uiBtn="secondary" size="sm" (click)="openEditDialog(row)" title="Editar accionista">✏️</button>
-                   <button uiBtn="danger" size="sm" (click)="deleteShareholder(row)" [disabled]="!canDeleteShareholder(row)" [title]="!canDeleteShareholder(row) ? 'No se puede eliminar: ya tiene asistencia' : 'Eliminar'">🗑️</button>
+                   <button uiBtn="secondary" size="sm" (click)="openEditDialog(row)" title="Editar accionista"><ui-icon name="edit" [size]="16"></ui-icon></button>
+                   <button uiBtn="danger" size="sm" (click)="deleteShareholder(row)" [disabled]="!canDeleteShareholder(row)" [title]="!canDeleteShareholder(row) ? 'No se puede eliminar: ya tiene asistencia' : 'Eliminar'"><ui-icon name="trash" [size]="16"></ui-icon></button>
                  </div>
                </td>
              </tr>
@@ -81,27 +82,27 @@ import { PadronRow, sortPadronByNumericId, canDeleteShareholder as canDeleteShar
        <div class="bg-white rounded-2xl shadow-2xl w-[90vw] max-w-xl p-4">
          <div class="flex items-center justify-between mb-2">
            <h3 class="font-semibold">{{ editingShareholder ? 'Editar accionista' : 'Agregar accionista' }}</h3>
-           <button uiBtn="ghost" (click)="closeAddDialog()">✖</button>
+           <button uiBtn="ghost" (click)="closeAddDialog()" aria-label="Cerrar"><ui-icon name="close" [size]="16"></ui-icon></button>
          </div>
          <form [formGroup]="addForm" (ngSubmit)="submitAddShareholder()" class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
            <div>
-             <label class="text-xs opacity-80">ID</label>
+             <label class="field-label">ID</label>
              <input uiInput formControlName="shareholderId" [disabled]="!!editingShareholder">
            </div>
            <div>
-             <label class="text-xs opacity-80">Nombre</label>
+             <label class="field-label">Nombre</label>
              <input uiInput formControlName="shareholderName">
            </div>
            <div>
-             <label class="text-xs opacity-80">Cantidad de Acciones</label>
+             <label class="field-label">Cantidad de Acciones</label>
              <input uiInput type="number" min="0" formControlName="shares">
            </div>
            <div>
-             <label class="text-xs opacity-80">Representante Legal</label>
+             <label class="field-label">Representante Legal</label>
              <input uiInput formControlName="legalRepresentative">
            </div>
            <div>
-             <label class="text-xs opacity-80">Apoderado</label>
+             <label class="field-label">Apoderado</label>
              <input uiInput formControlName="proxy">
            </div>
            <div class="col-span-full flex justify-end gap-2 mt-2">
@@ -147,7 +148,7 @@ export class ElectionPadronEditComponent {
         this.padron.set(sorted);
       },
       error: err => {
-        console.error('Error cargando padrón:', err);
+        console.error('Error cargando padrÃ³n:', err);
         this.padron.set([]);
       }
     });
@@ -159,7 +160,7 @@ export class ElectionPadronEditComponent {
       if (msg) this.toast.show(msg, 'warning', 2500);
       return;
     }
-    if (!confirm(`¿Estás seguro de eliminar al accionista "${row.shareholderName}"?`)) return;
+    if (!confirm(`Â¿EstÃ¡s seguro de eliminar al accionista "${row.shareholderName}"?`)) return;
     this.http.delete(`/api/elections/${this.id()}/padron/${row.id}`).subscribe({
       next: _ => { this.toast.show('Accionista eliminado correctamente','success',1500); this.loadPadron(); },
       error: err => { console.error('Error deleting shareholder:', err); this.toast.show('Error al eliminar accionista','error',2500); }
@@ -207,7 +208,7 @@ export class ElectionPadronEditComponent {
 
   debugData(){
     console.log('=== DEBUG DATA ===');
-    console.log('ID de elección:', this.id());
+    console.log('ID de elecciÃ³n:', this.id());
     console.log('Padron signal:', this.padron());
     console.log('Can edit:', this.canEdit);
     console.log('==================');
@@ -215,3 +216,5 @@ export class ElectionPadronEditComponent {
 
   goBack(){ this.router.navigate(['/elections', this.id() ]); }
 }
+
+

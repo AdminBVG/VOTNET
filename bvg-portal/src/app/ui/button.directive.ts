@@ -1,4 +1,4 @@
-import { Directive, HostBinding, Input } from '@angular/core';
+﻿import { Directive, HostBinding, Input } from '@angular/core';
 
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
 type BtnSize = 'sm' | 'md' | 'lg';
@@ -46,6 +46,10 @@ export class UiButtonDirective {
     }
 
     return [...base, ...padding, ...variant, ...ring, ...block].join(' ');
+  }
+
+  @HostBinding('attr.aria-busy') get ariaBusy(){
+    return this.loading ? 'true' : null;
   }
 }
 

@@ -7,13 +7,28 @@
 html, body { height: 100%; }
 body{ margin:0; font-family: 'Poppins', Inter, Roboto, Arial, sans-serif; color:#1c1c1c }
 
+/* Ensure Angular CDK overlays are always above header/footer */
+.cdk-overlay-container, .cdk-overlay-backdrop, .cdk-overlay-pane { z-index: 9999 !important; }
+.overlay-elevated { z-index: 100000 !important; }
+/* Make sure overlay container covers the viewport properly */
+/* Keep default positioning for container to allow CDK to compute offsets correctly */
+/* .cdk-overlay-container stays with default position from Angular */
+
 :root{
   --bvg-dark:#001489;
   --bvg-blue:#005EB8;
   --bvg-celeste:#28CBFF;
+  --primary: var(--bvg-blue);
+  --secondary: #6b7280; /* gray-500 */
+  --accent: var(--bvg-celeste);
   --bg:#ffffff;
   --text:#1c1c1c;
   --surface:#f7f9fc;
+  --border:#e5e7eb; /* gray-200 */
+  --muted:#6b7280; /* gray-500 */
+  --success:#16a34a; /* green-600 */
+  --warning:#d97706; /* amber-600 */
+  --danger:#dc2626; /* red-600 */
 }
 
 /* Layout */
@@ -23,4 +38,47 @@ body{ margin:0; font-family: 'Poppins', Inter, Roboto, Arial, sans-serif; color:
 [data-theme="dark"] body{ background:#0b1020; color:#e7eaf0 }
 [data-theme="dark"] .app-footer{ background:#070b16 }
 
+[data-theme="dark"]:root{
+  --bg:#0b1020;
+  --text:#e7eaf0;
+  --surface:#0f172a; /* slate-900-ish */
+  --border:#1f2937; /* slate-800 */
+  --muted:#9ca3af; /* gray-400 */
+  --primary:#60a5fa; /* brand tint in dark */
+}
+
+
+/* Component presets */
+@layer components {
+  /* Table utilities */
+  .table-base { @apply w-full text-sm border border-gray-200 rounded-xl overflow-hidden; }
+  .thead-sticky thead { @apply sticky top-0 bg-gray-50 text-gray-600; }
+  .row-zebra tbody tr:nth-child(odd) { @apply bg-gray-50/50; }
+  .table-compact td, .table-compact th { @apply p-2; }
+  .table-comfortable td, .table-comfortable th { @apply p-3; }
+
+  /* Form field semantics */
+  .field-label { @apply text-xs opacity-80; }
+  .field-helper { @apply text-xs opacity-70; }
+  .field-error { @apply text-xs text-red-700; }
+
+  /* Theme utilities mapped to CSS vars */
+  .bg-bg { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .text-text { color: var(--text); }
+  .text-muted { color: var(--muted); }
+  .border-border { border-color: var(--border); }
+  .text-primary { color: var(--primary); }
+  .bg-primary { background-color: var(--primary); }
+  .text-success { color: var(--success); }
+  .text-warning { color: var(--warning); }
+  .text-danger { color: var(--danger); }
+
+  /* Skeletons */
+  .skeleton { @apply animate-pulse bg-gray-200 dark:bg-slate-700 rounded; }
+  .skeleton-line { @apply skeleton h-3; }
+  .skeleton-avatar { @apply skeleton rounded-full; width: 36px; height: 36px; }
+  /* Overlays above footer/header */
+  :root .cdk-overlay-container { z-index: 9999; }
+}
 

@@ -1,4 +1,4 @@
-export interface PadronRow { 
+﻿export interface PadronRow { 
   id: string; 
   shareholderId: string; 
   shareholderName: string; 
@@ -9,7 +9,7 @@ export interface PadronRow {
 }
 
 /**
- * Ordena el padrón por ID numéricamente
+ * Ordena el padrÃ³n por ID numÃ©ricamente
  */
 export function sortPadronByNumericId(padron: PadronRow[]): PadronRow[] {
   return padron.sort((a, b) => {
@@ -27,7 +27,7 @@ export function canDeleteShareholder(shareholder: PadronRow): boolean {
 }
 
 /**
- * Obtiene el mensaje de error para eliminación
+ * Obtiene el mensaje de error para eliminaciÃ³n
  */
 export function getDeleteErrorMessage(shareholder: PadronRow): string {
   if (shareholder.attendance !== 'None') {
@@ -35,3 +35,4 @@ export function getDeleteErrorMessage(shareholder: PadronRow): string {
   }
   return '';
 }
+

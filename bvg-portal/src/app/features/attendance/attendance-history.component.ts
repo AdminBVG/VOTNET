@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { NgIf, NgFor, DatePipe } from '@angular/common';
@@ -12,8 +12,8 @@ interface LogRow { padronEntryId:string; oldAttendance:string; newAttendance:str
   template: `
   <div class="p-4">
     <h2 class="text-xl font-semibold mb-2">Historial de asistencia</h2>
-    <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden" *ngIf="rows().length">
-      <thead class="bg-gray-50 text-gray-600">
+    <table class="table-base table-compact thead-sticky row-zebra" *ngIf="rows().length">
+      <thead>
         <tr>
           <th class="text-left p-2">Fecha</th>
           <th class="text-left p-2">PadronId</th>
@@ -26,7 +26,7 @@ interface LogRow { padronEntryId:string; oldAttendance:string; newAttendance:str
           <td class="p-2">{{r.timestamp | date:'medium'}}</td>
           <td class="p-2">{{r.padronEntryId}}</td>
           <td class="p-2">{{r.userName || r.userId}}</td>
-          <td class="p-2">{{r.oldAttendance}} → {{r.newAttendance}}</td>
+          <td class="p-2">{{r.oldAttendance}} â†’ {{r.newAttendance}}</td>
         </tr>
       </tbody>
     </table>
@@ -45,4 +45,6 @@ export class AttendanceHistoryComponent{
     this.http.get<LogRow[]>(`/api/elections/${this.id}/attendance/logs?take=200`).subscribe({ next: d=> this.rows.set(d||[]), error: _=> this.rows.set([]) });
   }
 }
+
+
 

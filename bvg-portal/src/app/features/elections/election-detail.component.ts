@@ -98,7 +98,7 @@ interface PadronRow { id: string; shareholderId: string; shareholderName: string
           <button uiBtn="primary" [disabled]="assignForm.invalid">Agregar</button>
         </form>
         <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden mt-2" *ngIf="assignments().length">
-          <thead class="bg-gray-50 text-gray-600"><tr><th class="p-2 text-left">Usuario</th><th class="p-2 text-left">Rol</th><th class="w-20"></th></tr></thead>
+          <thead><tr><th class="p-2 text-left">Usuario</th><th class="p-2 text-left">Rol</th><th class="w-20"></th></tr></thead>
           <tbody>
             <tr *ngFor="let a of assignments()" class="border-t">
               <td class="p-2">{{a.userName || a.UserName || a.userId}}</td>
@@ -115,8 +115,8 @@ interface PadronRow { id: string; shareholderId: string; shareholderName: string
         <div *ngFor="let q of results(); let i = index" class="q">
           <h4 class="font-semibold">{{q.text}}</h4>
           <div class="chart-container"><canvas id="res-chart-{{i}}"></canvas></div>
-          <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
-            <thead class="bg-gray-50 text-gray-600"><tr><th class="p-2 text-left">OpciÃ³n</th><th class="p-2 text-left">Votos</th><th class="p-2 text-left">%</th></tr></thead>
+          <table class="table-base table-compact thead-sticky row-zebra">
+            <thead><tr><th class="p-2 text-left">OpciÃ³n</th><th class="p-2 text-left">Votos</th><th class="p-2 text-left">%</th></tr></thead>
             <tbody>
               <tr *ngFor="let o of q.options" class="border-t">
                 <td class="p-2">{{o.text}}</td>
@@ -141,7 +141,7 @@ interface PadronRow { id: string; shareholderId: string; shareholderName: string
           </select>
         </div>
         <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden compact">
-          <thead class="bg-gray-50 text-gray-600"><tr><th class="p-2 text-left">Accionista</th><th class="p-2 text-left">Acciones</th><th class="p-2 text-left">OpciÃ³n</th></tr></thead>
+          <thead><tr><th class="p-2 text-left">Accionista</th><th class="p-2 text-left">Acciones</th><th class="p-2 text-left">OpciÃ³n</th></tr></thead>
           <tbody>
             <tr *ngFor="let p of filteredPadron()" class="border-t">
               <td class="p-2">{{p.shareholderName}}</td>
@@ -343,8 +343,11 @@ export class ElectionDetailComponent implements AfterViewInit {
   submitAll(){ const votes:any[] = []; for (const q of this.results()){ const qId = q.questionId || q.QuestionId; const map = this.voteSelections[qId] || {}; for (const pid of Object.keys(map)) votes.push({ padronId: pid, questionId: qId, optionId: map[pid] }); } if (!votes.length){ this.toast.show('No hay votos para registrar','warning',2000); return; } const onSuccess = () => { this.toast.show('Votos registrados','success',1500); this.loadResults(); this.voteSelections = {}; this.globalSelections = {}; this.showSummary.set(false); this.currentIndex.set(0); }; this.http.post(`/api/elections/${this.id()}/votes/batch`, { votes }).subscribe({ next: _=> onSuccess(), error: err => { if (err.status === 501){ const calls = votes.map(v => this.http.post(`/api/elections/${this.id()}/votes`, v)); Promise.all(calls.map(x=>x.toPromise())).then(()=> onSuccess()).catch(()=> this.toast.show('Error al registrar voto','error',2500)); } else if (err.status === 404) this.toast.show('ElecciÃ³n no encontrada','error',2500); else if (err.status === 400) this.toast.show('QuÃ³rum no alcanzado o elecciÃ³n cerrada','error',2500); else if (err.status === 403) this.toast.show('No tienes permiso para registrar','error',2500); else this.toast.show('Error al registrar voto','error',2500); } }); }
   closeElection(){ this.http.post(`/api/elections/${this.id()}/close`, {}).subscribe({ next: _=> { this.toast.show('ElecciÃ³n cerrada','success',2000); this.loadResults(); this.loadElectionInfo(); }, error: _=> this.toast.show('No autorizado para cerrar','error',2500) }); }
   get canAttend(){ if (this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin')) return true; const me = this.auth.payload?.sub; return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === Roles.AttendanceRegistrar); }
-  get canRegister(){ if (this.electionInfo()?.isClosed) return false; const admin = this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); if (!admin && this.status() !== "VotingOpen") return false; if (admin) return true; const me = this.auth.payload?.sub; return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === Roles.VoteRegistrar); }
+  get canRegister(){ if (this.electionInfo()?.isClosed) return false; if (this.status() !== 'VotingOpen') return false; const me = this.auth.payload?.sub; return (this.assignments()||[]).some((a:any) => (a.userId ?? a.UserId) === me && (a.role ?? a.Role) === Roles.VoteRegistrar); }
   get canClose(){ return this.auth.hasRole('GlobalAdmin') || this.auth.hasRole('VoteAdmin'); }
   closeVoting(){ this.http.post('/api/elections/' + this.id() + '/status/close-voting', { confirm: true }).subscribe({ next: _=> { this.toast.show('VotaciÃ³n cerrada','success',2000); this.loadResults(); this.loadQuorum(); }, error: err => { if (err?.error?.error === 'incomplete_votes') this.toast.show('Faltan votos de presentes en alguna pregunta','error',2500); else this.toast.show('No se pudo cerrar la votaciÃ³n','error',2500); } }); }
 }
+
+
+
 

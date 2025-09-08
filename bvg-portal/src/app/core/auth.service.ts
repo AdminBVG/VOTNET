@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+﻿import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -62,3 +62,4 @@ export class AuthService {
     return this.http.get<{ token: string }>(`/api/antiforgery/token`);
   }
 }
+

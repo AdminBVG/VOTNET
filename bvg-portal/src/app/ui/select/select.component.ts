@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild, forwardRef, inject } from '@angular/core';
+﻿import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild, forwardRef, inject } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { NgFor, NgIf } from '@angular/common';
 import { OverlayModule, CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition, Overlay } from '@angular/cdk/overlay';
@@ -11,18 +11,18 @@ type Option = { label: string; value: string } | string | number;
   imports: [NgFor, NgIf, OverlayModule, CdkConnectedOverlay, CdkOverlayOrigin],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => UiSelectComponent), multi: true }],
   template: `
-  <div class="relative inline-block w-full" [class.w-44]="!block" [class.w-full]="block" cdkOverlayOrigin #origin="cdkOverlayOrigin">
-    <button type="button" class="select-btn" [attr.aria-expanded]="open" [disabled]="disabled"
+  <div class="relative inline-block w-full" [class.w-44]="!block" [class.w-full]="block">
+    <button type="button" class="select-btn" [attr.aria-expanded]="open" [disabled]="disabled" cdkOverlayOrigin #origin="cdkOverlayOrigin"
             (click)="toggle()" (keydown)="onButtonKeydown($event)">
       <span class="truncate">{{ selectedLabel() || placeholder }}</span>
-      <span class="chevron" aria-hidden="true">▼</span>
+      <span class="chevron" aria-hidden="true">â–¼</span>
     </button>
 
     <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origin" [cdkConnectedOverlayOpen]="open"
                  [cdkConnectedOverlayHasBackdrop]="true" (backdropClick)="close()" (detach)="close()"
                  [cdkConnectedOverlayPositions]="positions" [cdkConnectedOverlayPanelClass]="'overlay-elevated'"
                  [cdkConnectedOverlayWidth]="overlayWidth" [cdkConnectedOverlayOffsetY]="4"
-                 cdkConnectedOverlayScrollStrategy="reposition" [cdkConnectedOverlayPush]="true">
+                 [cdkConnectedOverlayScrollStrategy]="scrollStrategy" [cdkConnectedOverlayPush]="true">
       <div class="panel" role="listbox" [attr.aria-activedescendant]="activeId">
         <div *ngIf="searchable" class="p-2 border-b border-gray-200">
           <input #searchInput type="text" class="search" [placeholder]="searchPlaceholder" (input)="onSearch($event)"/>
@@ -32,7 +32,7 @@ type Option = { label: string; value: string } | string | number;
                class="option" [class.active]="i===activeIndex" [id]="idFor(i)" role="option"
                [attr.aria-selected]="isSelected(opt)" (click)="select(opt)" (mousemove)="hover(i)">
             <span class="truncate">{{ displayLabel(opt) }}</span>
-            <span class="check" *ngIf="isSelected(opt)">✔</span>
+            <span class="check" *ngIf="isSelected(opt)">âœ”</span>
           </div>
           <div *ngIf="!filteredOptions.length" class="px-3 py-2 text-sm text-gray-500">Sin opciones</div>
         </div>
@@ -53,7 +53,7 @@ type Option = { label: string; value: string } | string | number;
 export class UiSelectComponent implements ControlValueAccessor {
   @Input() options: Option[] = [];
   @Input() placeholder = 'Seleccione';
-  @Input() searchPlaceholder = 'Buscar…';
+  @Input() searchPlaceholder = 'Buscarâ€¦';
   @Input() disabled = false;
   @Input() block = false;
   @Input() searchable = false;

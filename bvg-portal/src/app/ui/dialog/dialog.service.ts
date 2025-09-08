@@ -1,4 +1,4 @@
-import { Injectable, Injector, TemplateRef, Type } from '@angular/core';
+﻿import { Injectable, Injector, TemplateRef, Type } from '@angular/core';
 import { Overlay, OverlayConfig, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal, TemplatePortal } from '@angular/cdk/portal';
 import { UiDialogContainerComponent } from './dialog_container.component';
@@ -29,11 +29,14 @@ export class DialogService {
     const cfg = new OverlayConfig({
       hasBackdrop: true,
       backdropClass: 'bg-black/40',
+      panelClass: 'overlay-elevated',
       scrollStrategy: this.overlay.scrollStrategies.block(),
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically()
     });
     const ref = this.overlay.create(cfg);
     ref.backdropClick().subscribe(()=> ref.dispose());
+    // Close on ESC for accessibility
+    ref.keydownEvents().subscribe(e => { if (e.key === 'Escape') { ref.dispose(); } });
     return ref;
   }
 }

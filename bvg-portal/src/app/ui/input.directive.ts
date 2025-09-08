@@ -1,4 +1,4 @@
-import { Directive, HostBinding, Input, Optional } from '@angular/core';
+﻿import { Directive, HostBinding, Input, Optional } from '@angular/core';
 import { NgControl } from '@angular/forms';
 
 @Directive({
@@ -20,4 +20,10 @@ export class UiInputDirective {
     if (isInvalid) base.push('border-red-500','focus:ring-red-300'); else base.push('border-gray-300');
     return base.join(' ');
   }
+
+  @HostBinding('attr.aria-invalid') get ariaInvalid(){
+    const isInvalid = this.invalid || !!(this.ngControl && this.ngControl.invalid && (this.ngControl.touched || this.ngControl.dirty));
+    return isInvalid ? 'true' : null;
+  }
 }
+

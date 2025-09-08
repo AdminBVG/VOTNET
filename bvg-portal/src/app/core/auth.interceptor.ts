@@ -1,4 +1,4 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+﻿import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError } from 'rxjs/operators';
@@ -22,8 +22,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         localStorage.removeItem('token');
         router.navigateByUrl('/login');
       }
-      // En 403 no cerramos sesión; dejar que la vista maneje autorización
+      // En 403 no cerramos sesiÃ³n; dejar que la vista maneje autorizaciÃ³n
       return throwError(() => err);
     })
   );
 };
+

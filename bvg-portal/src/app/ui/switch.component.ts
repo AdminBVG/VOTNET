@@ -1,4 +1,4 @@
-import { Component, EventEmitter, forwardRef, HostBinding, Input, Output } from '@angular/core';
+﻿import { Component, EventEmitter, forwardRef, HostBinding, Input, Output } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
@@ -34,4 +34,5 @@ export class UiSwitchComponent implements ControlValueAccessor {
   registerOnTouched(fn: any){ this.onTouched = fn; }
   setDisabledState?(isDisabled: boolean): void { this.disabled = isDisabled; }
 }
+
 

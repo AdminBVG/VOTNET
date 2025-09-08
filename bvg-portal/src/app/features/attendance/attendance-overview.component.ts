@@ -28,7 +28,7 @@ import { LiveService } from '../../core/live.service';
           <span class="item"><span class="box total"></span> Total: {{data()?.total || 0}}</span>
         </div>
         <div class="quorum" *ngIf="data() as d">
-          <div>QuÃ³rum: {{presentSharePct()}}% de {{d.totalShares | number:'1.0-0'}} acciones (mÃ­n: {{(d.quorumMin*100) | number:'1.0-0'}}%)</div>
+          <div>Quórum: {{presentSharePct()}}% de {{d.totalShares | number:'1.0-0'}} acciones (mín: {{(d.quorumMin*100) | number:'1.0-0'}}%)</div>
           <div class="bar"><div class="p" [style.width.%]="presentSharePct()"></div></div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { LiveService } from '../../core/live.service';
@@ -21,14 +21,14 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; l
     <div class="mb-2">
       <a class="underline text-brand-primary" href="/api/elections/padron-template" download>Descargar plantilla</a>
     </div>
-    <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden" *ngIf="rows().length">
-      <thead class="bg-gray-50 text-gray-600">
+    <table class="table-base table-compact thead-sticky row-zebra" *ngIf="rows().length">
+      <thead>
         <tr>
           <th class="text-left p-2">ID</th>
           <th class="text-left p-2">Accionista</th>
           <th class="text-left p-2">Apoderado</th>
           <th class="text-left p-2">Acta</th>
-          <th class="text-left p-2">Acción</th>
+          <th class="text-left p-2">AcciÃ³n</th>
         </tr>
       </thead>
       <tbody>
@@ -36,7 +36,7 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; l
           <td class="p-2">{{r.shareholderId}}</td>
           <td class="p-2">{{r.shareholderName}}</td>
           <td class="p-2">{{r.proxy || '-'}}</td>
-          <td class="p-2">{{ r.hasActa ? 'Sí' : 'No' }}</td>
+          <td class="p-2">{{ r.hasActa ? 'SÃ­' : 'No' }}</td>
           <td class="p-2">
             <ng-container *ngIf="r.proxy; else noProxy">
               <input type="file" accept="application/pdf" #f class="hidden" (change)="upload(r, f.files?.[0] || null)">
@@ -48,7 +48,7 @@ interface PadronRow { id:string; shareholderId:string; shareholderName:string; l
         </tr>
       </tbody>
     </table>
-    <div *ngIf="!rows().length" class="opacity-75">Sin padrón o sin permisos.</div>
+    <div *ngIf="!rows().length" class="opacity-75">Sin padrÃ³n o sin permisos.</div>
   </div>
   `
 })
@@ -100,4 +100,6 @@ export class AttendanceRequirementsComponent{
   }
   missing(){ return (this.rows()||[]).filter(r=> r.proxy && !r.hasActa).length; }
 }
+
+
 

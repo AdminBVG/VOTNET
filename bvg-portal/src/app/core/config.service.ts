@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+﻿import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments';
 
@@ -26,3 +26,4 @@ export class ConfigService {
   azureClientId = computed(() => this.cfg()?.azureAd?.clientId || environment.azureClientId);
   azureTenantId = computed(() => this.cfg()?.azureAd?.tenantId || environment.azureTenantId);
 }
+

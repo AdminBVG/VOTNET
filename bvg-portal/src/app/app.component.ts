@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+﻿import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ConfigService } from './core/config.service';
 import { LiveService } from './core/live.service';
@@ -24,3 +24,4 @@ export class AppComponent {
     });
   }
 }
+

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -42,4 +42,5 @@ export class ThemeService {
     }
   }
 }
+
 

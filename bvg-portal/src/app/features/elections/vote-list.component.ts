@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
@@ -21,7 +21,7 @@ interface AssignedDto { id: string; name: string; scheduledAt: string; isClosed:
         <h3 class="font-semibold">{{e.name}}</h3>
         <div class="opacity-85 text-sm">{{e.scheduledAt | date:'medium'}} <span *ngIf="e.isClosed" class="bg-gray-100 rounded-full px-2 py-0.5 text-xs ml-1">Cerrada</span></div>
         <div class="flex gap-2 mt-2">
-          <button uiBtn="primary" (click)="start(e.id)" [disabled]="e.isClosed">Empezar elección</button>
+          <button uiBtn="primary" (click)="start(e.id)" [disabled]="e.isClosed">Empezar elecciÃ³n</button>
         </div>
       </div>
     </div>
@@ -42,11 +42,12 @@ export class VoteListComponent {
     this.http.get<any>(`/api/elections/${id}/status`).subscribe({
       next: s => {
         const st = (s?.Status ?? s?.status ?? 'Draft');
-        if (st !== 'VotingOpen') { this.toast.show('La votación no está abierta','warning',2000); return; }
+        if (st !== 'VotingOpen') { this.toast.show('La votaciÃ³n no estÃ¡ abierta','warning',2000); return; }
         this.router.navigate(['/elections', id]);
       },
       error: _=> this.toast.show('No se pudo comprobar el estado','error',2000)
     });
   }
 }
+
 

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NgFor, NgIf, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,6 +7,8 @@ import { UiInputDirective } from '../../ui/input.directive';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
+Chart.defaults.font.family = "Poppins, Inter, Roboto, Arial, sans-serif";
+try{ const css = getComputedStyle(document.documentElement); Chart.defaults.color = css.getPropertyValue('--text').trim() || '#1c1c1c'; } catch {}
 
 @Component({
   selector: 'app-results-live',
@@ -16,7 +18,7 @@ Chart.register(...registerables);
   <div class="p-4">
     <h2 class="text-xl font-semibold mb-2">Resultados en vivo</h2>
     <div class="mb-3 max-w-sm">
-      <label class="text-xs opacity-80">Elección</label>
+      <label class="text-xs opacity-80">ElecciÃ³n</label>
       <select uiInput [(ngModel)]="selectedId" (ngModelChange)="loadResults()">
         <option [ngValue]="null">Seleccione...</option>
         <option *ngFor="let e of elections()" [value]="e.id">{{e.name}}</option>
@@ -27,10 +29,10 @@ Chart.register(...registerables);
       <div class="rounded-2xl border border-gray-200 bg-white shadow-card p-4 mb-3" *ngFor="let q of results(); let i = index">
         <h3 class="font-semibold mb-2">{{q.text}}</h3>
         <div class="chart-container"><canvas id="live-chart-{{i}}"></canvas></div>
-        <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
-          <thead class="bg-gray-50 text-gray-600">
+        <table class="table-base table-compact thead-sticky row-zebra">
+          <thead>
             <tr>
-              <th class="text-left p-2">Opción</th>
+              <th class="text-left p-2">OpciÃ³n</th>
               <th class="text-left p-2">Votos</th>
               <th class="text-left p-2">%</th>
             </tr>
@@ -46,7 +48,7 @@ Chart.register(...registerables);
       </div>
     </div>
     <ng-template #empty>
-      <p>Seleccione una elección para ver resultados.</p>
+      <p>Seleccione una elecciÃ³n para ver resultados.</p>
     </ng-template>
   </div>
   `,
@@ -89,3 +91,4 @@ export class ResultsLiveComponent {
     });
   }
 }
+

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { LiveService } from '../../core/live.service';
@@ -58,17 +58,17 @@ interface PadronRow {
         <option value="Virtual">Virtual</option>
         <option value="None">Ausente</option>
       </select>
-      <button uiBtn="secondary" (click)="markAll()" [disabled]="!canMark" title="{{!canMark ? 'Registro no está abierto o asistencia bloqueada' : ''}}">Marcar todo</button>
-      <button uiBtn="primary" (click)="markSelected()" [disabled]="!canMark || !anySelected()" title="{{!canMark ? 'Registro no está abierto o asistencia bloqueada' : (!anySelected() ? 'Seleccione al menos un registro' : '')}}">Marcar seleccionados</button>
+      <button uiBtn="secondary" (click)="markAll()" [disabled]="!canMark" title="{{!canMark ? 'Registro no estÃ¡ abierto o asistencia bloqueada' : ''}}">Marcar todo</button>
+      <button uiBtn="primary" (click)="markSelected()" [disabled]="!canMark || !anySelected()" title="{{!canMark ? 'Registro no estÃ¡ abierto o asistencia bloqueada' : (!anySelected() ? 'Seleccione al menos un registro' : '')}}">Marcar seleccionados</button>
     </div>
 
     <div class="summary text-sm my-2" *ngIf="rows().length">
-      Total: {{total()}} · Presenciales: {{count('Presencial')}} · Virtuales: {{count('Virtual')}} · Ausentes: {{count('None')}}
+      Total: {{total()}} Â· Presenciales: {{count('Presencial')}} Â· Virtuales: {{count('Virtual')}} Â· Ausentes: {{count('None')}}
       <div class="bar"><div class="p" [style.width.%]="presentPct()"></div></div>
     </div>
 
     <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden compact" *ngIf="rows().length">
-      <thead class="bg-gray-50 text-gray-600">
+      <thead>
         <tr>
           <th class="p-2"></th>
           <th class="text-left p-2">ID</th>
@@ -186,7 +186,7 @@ export class AttendanceRegisterComponent{
     return { background: g } as any;
   }
   set(r: PadronRow, att: 'Presencial'|'Virtual'|'None'){
-    if (!this.canMark) { this.toast.show('Registro no está abierto o asistencia bloqueada','warning',1800); return; }
+    if (!this.canMark) { this.toast.show('Registro no estÃ¡ abierto o asistencia bloqueada','warning',1800); return; }
     this.http.post(`/api/elections/${this.id}/padron/${r.id}/attendance`, { attendance: att === 'Presencial' ? 2 : (att === 'Virtual' ? 1 : 0) }).subscribe({
       next: _=> { r.attendance = att; this.toast.show('Asistencia actualizada','success',1300); },
       error: err => this.toast.show(this.mapAttendanceError(err), 'error', 2200)
@@ -194,18 +194,18 @@ export class AttendanceRegisterComponent{
   }
   anySelected(){ return Object.values(this.selected).some(v=>v); }
   markAll(){
-    if (!this.canMark) { this.toast.show('Registro no está abierto o asistencia bloqueada','warning',1800); return; }
+    if (!this.canMark) { this.toast.show('Registro no estÃ¡ abierto o asistencia bloqueada','warning',1800); return; }
     if(!confirm(`Aplicar "${this.bulkStatus}" a todos?`)) return;
-    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, reason: 'Marcación global' }).subscribe({
+    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, reason: 'MarcaciÃ³n global' }).subscribe({
       next: _=> { this.toast.show('Marcado masivo aplicado','success',1200); this.load(); },
       error: err => this.toast.show(this.mapAttendanceError(err), 'error', 2200)
     });
   }
   markSelected(){
-    if (!this.canMark) { this.toast.show('Registro no está abierto o asistencia bloqueada','warning',1800); return; }
+    if (!this.canMark) { this.toast.show('Registro no estÃ¡ abierto o asistencia bloqueada','warning',1800); return; }
     const ids = Object.keys(this.selected).filter(k=>this.selected[k]); if(!ids.length) return;
     if(!confirm(`Aplicar "${this.bulkStatus}" a ${ids.length} seleccionados?`)) return;
-    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, ids, reason: 'Marcación página' }).subscribe({
+    this.http.post(`/api/elections/${this.id}/attendance/batch`, { attendance: this.bulkStatus, ids, reason: 'MarcaciÃ³n pÃ¡gina' }).subscribe({
       next: _=> { this.toast.show('Seleccionados actualizados','success',1200); this.load(); },
       error: err => this.toast.show(this.mapAttendanceError(err), 'error', 2200)
     });
@@ -222,14 +222,14 @@ export class AttendanceRegisterComponent{
   private mapAttendanceError(err: any): string {
     const code = (err && err.error && err.error.error) ? String(err.error.error) : '';
     switch (code) {
-      case 'attendance_closed': return 'La asistencia está cerrada para esta elección.';
-      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elección.';
-      case 'padron_entry_not_found': return 'No se encontró el registro del padrón.';
+      case 'attendance_closed': return 'La asistencia estÃ¡ cerrada para esta elecciÃ³n.';
+      case 'forbidden': return 'No tienes permisos para registrar asistencia en esta elecciÃ³n.';
+      case 'padron_entry_not_found': return 'No se encontrÃ³ el registro del padrÃ³n.';
       default:
-        if (err && err.status === 0) return 'No hay conexión con el servidor.';
-        if (err && err.status === 400) return 'Solicitud inválida.';
+        if (err && err.status === 0) return 'No hay conexiÃ³n con el servidor.';
+        if (err && err.status === 400) return 'Solicitud invÃ¡lida.';
         if (err && err.status === 403) return 'Acceso denegado.';
-        return 'Ocurrió un error al actualizar la asistencia.';
+        return 'OcurriÃ³ un error al actualizar la asistencia.';
     }
   }
   openRegistration(){
@@ -252,4 +252,6 @@ export class AttendanceRegisterComponent{
       });
   }
 }
+
+
 

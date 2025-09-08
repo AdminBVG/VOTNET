@@ -1,10 +1,12 @@
-import { Routes } from '@angular/router';
+﻿import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
 
 export const routes: Routes = [
+  { path: 'userss', redirectTo: 'users', pathMatch: 'full' },
   { path: 'login', loadComponent: () => import('./features/auth/login.component').then(m => m.LoginComponent) },
   { path: '', loadComponent: () => import('./layout/shell.component').then(m => m.ShellComponent), canActivate: [authGuard], children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'userss', redirectTo: 'users', pathMatch: 'full' },
       { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'elections', loadComponent: () => import('./features/elections/elections.component').then(m => m.ElectionsComponent) },
       { path: 'attendance', loadComponent: () => import('./features/attendance/attendance-list.component').then(m => m.AttendanceListComponent) },
@@ -24,3 +26,4 @@ export const routes: Routes = [
   },
   { path: '**', redirectTo: '' }
 ];
+

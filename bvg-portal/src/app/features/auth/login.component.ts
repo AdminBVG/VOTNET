@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,11 +15,11 @@ import { UiInputDirective } from '../../ui/input.directive';
   <div class="min-h-screen flex items-center justify-center bg-surface">
     <img [src]="cfg.logoUrl()" class="fixed top-6 left-6 h-12" alt="Logo"/>
     <div class="card w-[320px]">
-      <h2 class="text-lg font-semibold mb-2">Iniciar sesión</h2>
+      <h2 class="text-lg font-semibold mb-2">Iniciar sesiÃ³n</h2>
       <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-2">
         <label class="text-xs opacity-80">Usuario</label>
         <input uiInput formControlName="userName" />
-        <label class="text-xs opacity-80">Contraseña</label>
+        <label class="text-xs opacity-80">ContraseÃ±a</label>
         <input uiInput type="password" formControlName="password" />
         <button uiBtn="primary" [disabled]="form.invalid || loading()">Entrar</button>
         <button uiBtn="secondary" type="button" (click)="loginMicrosoft()" [disabled]="loading()">Iniciar con Microsoft</button>
@@ -58,7 +58,7 @@ export class LoginComponent {
     localStorage.removeItem('token');
     this.auth.login(payload as any).subscribe({
       next: r => { this.auth.setToken(r.token); this.router.navigateByUrl('/'); },
-      error: _ => { this.error.set('Credenciales inválidas'); this.loading.set(false); }
+      error: _ => { this.error.set('Credenciales invÃ¡lidas'); this.loading.set(false); }
     });
   }
 
@@ -71,4 +71,5 @@ export class LoginComponent {
     });
   }
 }
+
 

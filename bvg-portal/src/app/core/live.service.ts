@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 
 @Injectable({ providedIn: 'root' })
@@ -57,3 +57,4 @@ export class LiveService {
     this.connection.on('systemNotification', handler as any);
   }
 }
+
