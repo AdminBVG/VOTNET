@@ -147,7 +147,7 @@ interface PadronRow { id: string; shareholderId: string; shareholderName: string
               <td class="p-2">{{p.shareholderName}}</td>
               <td class="p-2">{{p.shares}}</td>
               <td class="p-2" [ngClass]="{'override': currentSelectionMap()[p.id] !== globalSelections[currentQuestionId()]}">
-          <select uiInput [ngModel]="currentSelectionMap()[p.id]" (ngModelChange)="currentSelectionMap()[p.id] = $event">
+          <select uiInput [ngModel]="(electionInfo()?.signingProfile || electionInfo()?.SigningProfile) ?? '" (ngModelChange)="setSigningProfile($event)">
                   <option *ngFor="let o of getOptionsForCurrentQuestion()" [value]="o.optionId || o.OptionId">{{o.text}}</option>
                 </select>
               </td>
@@ -263,10 +263,7 @@ export class ElectionDetailComponent implements AfterViewInit {
     });
     this.loadSigningProfiles();
   }
-  get currentSigningProfile(){
-    const info = this.electionInfo();
-    return (info?.signingProfile ?? info?.SigningProfile) || '';
-  }  ngOnDestroy(){ this.live.leaveElection(this.id()); }
+  ngOnDestroy(){ this.live.leaveElection(this.id()); }
   ngAfterViewInit(){ }
 
   onPadron(e: Event){

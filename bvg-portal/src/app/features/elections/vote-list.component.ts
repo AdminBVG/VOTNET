@@ -1,10 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NgIf, NgFor, DatePipe } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { UiButtonDirective } from '../../ui/button.directive';
+import { ToastService } from '../../ui/toast/toast.service';
 import { Roles } from '../../core/constants/roles';
 
 interface AssignedDto { id: string; name: string; scheduledAt: string; isClosed: boolean; }
@@ -12,35 +11,28 @@ interface AssignedDto { id: string; name: string; scheduledAt: string; isClosed:
 @Component({
   selector: 'app-vote-list',
   standalone: true,
-  imports: [NgIf, NgFor, DatePipe, MatCardModule, MatButtonModule, MatSnackBarModule],
+  imports: [NgIf, NgFor, DatePipe, UiButtonDirective],
   template: `
-  <div class="page">
-    <h2>Elecciones asignadas</h2>
-    <div *ngIf="!items().length" class="muted">No tienes elecciones asignadas.</div>
-    <div class="grid">
-      <mat-card *ngFor="let e of items()" class="mat-elevation-z1">
-        <h3>{{e.name}}</h3>
-        <div class="meta">{{e.scheduledAt | date:'medium'}} <span *ngIf="e.isClosed" class="chip">Cerrada</span></div>
-        <div class="actions">
-          <button mat-raised-button color="primary" (click)="start(e.id)" [disabled]="e.isClosed">Empezar elección</button>
+  <div class="p-4">
+    <h2 class="text-xl font-semibold mb-2">Elecciones asignadas</h2>
+    <div *ngIf="!items().length" class="opacity-75">No tienes elecciones asignadas.</div>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3">
+      <div *ngFor="let e of items()" class="rounded-2xl border border-gray-200 bg-white shadow-card p-4">
+        <h3 class="font-semibold">{{e.name}}</h3>
+        <div class="opacity-85 text-sm">{{e.scheduledAt | date:'medium'}} <span *ngIf="e.isClosed" class="bg-gray-100 rounded-full px-2 py-0.5 text-xs ml-1">Cerrada</span></div>
+        <div class="flex gap-2 mt-2">
+          <button uiBtn="primary" (click)="start(e.id)" [disabled]="e.isClosed">Empezar elección</button>
         </div>
-      </mat-card>
+      </div>
     </div>
   </div>
   `,
-  styles: [`
-    .page{ padding:16px }
-    .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap:12px }
-    .actions{ display:flex; gap:8px; margin-top:8px }
-    .meta{ opacity:.85; font-size:13px }
-    .chip{ background:#eee; border-radius:12px; padding:2px 8px; font-size:12px; margin-left:6px }
-    .muted{ opacity:.75 }
-  `]
+  styles: []
 })
 export class VoteListComponent {
   private http = inject(HttpClient);
   private router = inject(Router);
-  private snack = inject(MatSnackBar);
+  private toast = inject(ToastService);
   items = signal<AssignedDto[]>([]);
   constructor(){ this.load(); }
   load(){
@@ -50,10 +42,10 @@ export class VoteListComponent {
     this.http.get<any>(`/api/elections/${id}/status`).subscribe({
       next: s => {
         const st = (s?.Status ?? s?.status ?? 'Draft');
-        if (st !== 'VotingOpen') { this.snack.open('La votación no está abierta','OK',{duration:2000}); return; }
+        if (st !== 'VotingOpen') { this.toast.show('La votación no está abierta','warning',2000); return; }
         this.router.navigate(['/elections', id]);
       },
-      error: _=> this.snack.open('No se pudo comprobar el estado','OK',{duration:2000})
+      error: _=> this.toast.show('No se pudo comprobar el estado','error',2000)
     });
   }
 }

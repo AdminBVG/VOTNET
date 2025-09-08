@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "cli": { "packageManager": "npm", "analytics": "36846b36-00f6-4201-ad06-c802f8004a65" },
@@ -24,7 +24,6 @@
               { "glob": "**/*", "input": "public" }
             ],
             "styles": [
-              "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.css"
             ],
             "scripts": []
@@ -53,3 +52,4 @@
     }
   }
 }
+

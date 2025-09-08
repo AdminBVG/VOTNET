@@ -1,0 +1,15 @@
+
+  <div class="page">
+    <h2>Elecciones asignadas</h2>
+    <div *ngIf="!items().length" class="muted">No tienes elecciones asignadas.</div>
+    <div class="grid">
+      <mat-card *ngFor="let e of items()" class="mat-elevation-z1">
+        <h3>{{e.name}}</h3>
+        <div class="meta">{{e.scheduledAt | date:'medium'}} <span *ngIf="e.isClosed" class="chip">Cerrada</span></div>
+        <div class="actions">
+          <button mat-raised-button color="primary" (click)="start(e.id)" [disabled]="e.isClosed">Empezar elección</button>
+        </div>
+      </mat-card>
+    </div>
+  </div>
+  

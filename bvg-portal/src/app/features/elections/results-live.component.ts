@@ -1,11 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NgFor, NgIf, DecimalPipe } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTableModule } from '@angular/material/table';
+import { FormsModule } from '@angular/forms';
 import { LiveService } from '../../core/live.service';
+import { UiInputDirective } from '../../ui/input.directive';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -13,45 +11,46 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-results-live',
   standalone: true,
-  imports: [NgFor, NgIf, DecimalPipe, MatCardModule, MatFormFieldModule, MatSelectModule, MatTableModule],
+  imports: [NgFor, NgIf, DecimalPipe, FormsModule, UiInputDirective],
   template: `
-  <div class="page">
-    <h2>Resultados en vivo</h2>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>Elección</mat-label>
-      <mat-select [(value)]="selectedId" (valueChange)="loadResults()">
-        <mat-option *ngFor="let e of elections()" [value]="e.id">{{e.name}}</mat-option>
-      </mat-select>
-    </mat-form-field>
+  <div class="p-4">
+    <h2 class="text-xl font-semibold mb-2">Resultados en vivo</h2>
+    <div class="mb-3 max-w-sm">
+      <label class="text-xs opacity-80">Elección</label>
+      <select uiInput [(ngModel)]="selectedId" (ngModelChange)="loadResults()">
+        <option [ngValue]="null">Seleccione...</option>
+        <option *ngFor="let e of elections()" [value]="e.id">{{e.name}}</option>
+      </select>
+    </div>
 
     <div *ngIf="results().length; else empty">
-      <mat-card class="q" *ngFor="let q of results(); let i = index">
-        <h3>{{q.text}}</h3>
+      <div class="rounded-2xl border border-gray-200 bg-white shadow-card p-4 mb-3" *ngFor="let q of results(); let i = index">
+        <h3 class="font-semibold mb-2">{{q.text}}</h3>
         <div class="chart-container"><canvas id="live-chart-{{i}}"></canvas></div>
-        <table mat-table [dataSource]="q.options" class="mat-elevation-z1">
-          <ng-container matColumnDef="text">
-            <th mat-header-cell *matHeaderCellDef>Opción</th>
-            <td mat-cell *matCellDef="let o">{{o.text}}</td>
-          </ng-container>
-          <ng-container matColumnDef="votes">
-            <th mat-header-cell *matHeaderCellDef>Votos</th>
-            <td mat-cell *matCellDef="let o">{{o.votes}}</td>
-          </ng-container>
-          <ng-container matColumnDef="percent">
-            <th mat-header-cell *matHeaderCellDef>%</th>
-            <td mat-cell *matCellDef="let o">{{ (o.percent || o.Percent)*100 | number:'1.0-2' }}%</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="resCols"></tr>
-          <tr mat-row *matRowDef="let row; columns: resCols;"></tr>
+        <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
+          <thead class="bg-gray-50 text-gray-600">
+            <tr>
+              <th class="text-left p-2">Opción</th>
+              <th class="text-left p-2">Votos</th>
+              <th class="text-left p-2">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let o of (q.options || [])" class="border-t">
+              <td class="p-2">{{o.text}}</td>
+              <td class="p-2">{{o.votes}}</td>
+              <td class="p-2">{{ (o.percent || o.Percent)*100 | number:'1.0-2' }}%</td>
+            </tr>
+          </tbody>
         </table>
-      </mat-card>
+      </div>
     </div>
     <ng-template #empty>
       <p>Seleccione una elección para ver resultados.</p>
     </ng-template>
   </div>
   `,
-  styles: [`.q{margin-bottom:12px}.full{width:100%}.chart-container{max-width:300px;margin-bottom:8px}`]
+  styles: [`.chart-container{max-width:300px;margin-bottom:8px}`]
 })
 export class ResultsLiveComponent {
   private http = inject(HttpClient);
@@ -60,7 +59,6 @@ export class ResultsLiveComponent {
   selectedId: string | null = null;
   private prevId: string | null = null;
   results = signal<any[]>([]);
-  resCols = ['text','votes','percent'];
   charts: Chart[] = [];
 
   constructor(){
@@ -91,4 +89,3 @@ export class ResultsLiveComponent {
     });
   }
 }
-

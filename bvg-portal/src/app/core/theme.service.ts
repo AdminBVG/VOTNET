@@ -33,8 +33,13 @@ export class ThemeService {
 
   private apply(mode: ThemeMode) {
     const root = document.documentElement;
-    if (mode === 'dark') root.setAttribute('data-theme', 'dark');
-    else root.removeAttribute('data-theme');
+    if (mode === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+      root.classList.add('dark');
+    } else {
+      root.removeAttribute('data-theme');
+      root.classList.remove('dark');
+    }
   }
 }
 

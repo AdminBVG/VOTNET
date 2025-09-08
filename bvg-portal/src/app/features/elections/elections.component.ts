@@ -1,12 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { MatTableModule } from '@angular/material/table';
 import { NgIf, NgFor, NgClass, DatePipe } from '@angular/common';
 import { LiveService } from '../../core/live.service';
 import { AuthService } from '../../core/auth.service';
 import { Router } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { UiButtonDirective } from '../../ui/button.directive';
 
 interface ElectionDto {
   id: string;
@@ -19,55 +17,55 @@ interface ElectionDto {
 @Component({
   selector: 'app-elections',
   standalone: true,
-  imports: [MatTableModule, NgIf, NgFor, NgClass, DatePipe, MatButtonModule, MatTooltipModule],
+  imports: [NgIf, NgFor, NgClass, DatePipe, UiButtonDirective],
   template: `
-  <div class="page">
-    <h2>Historial de elecciones</h2>
-    <table mat-table [dataSource]="items()" class="mat-elevation-z1 full" *ngIf="items().length">
-      <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef>Nombre</th>
-        <td mat-cell *matCellDef="let e">{{e.name}}</td>
-      </ng-container>
-      <ng-container matColumnDef="date">
-        <th mat-header-cell *matHeaderCellDef>Fecha</th>
-        <td mat-cell *matCellDef="let e">{{e.scheduledAt | date:'short'}}</td>
-      </ng-container>
-      <ng-container matColumnDef="status">
-        <th mat-header-cell *matHeaderCellDef>Estado</th>
-        <td mat-cell *matCellDef="let e">
-          <span class="chip" [ngClass]="(statuses()[e.id]?.Status||'').toLowerCase()" matTooltip="{{statuses()[e.id]?.Locked ? 'Registro bloqueado' : 'Registro abierto'}}">
-            {{statuses()[e.id]?.Status || '...'}}
-          </span>
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="quorum">
-        <th mat-header-cell *matHeaderCellDef>Quorum</th>
-        <td mat-cell *matCellDef="let e">{{e.quorumMinimo}}</td>
-      </ng-container>
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Acciones</th>
-        <td mat-cell *matCellDef="let e" class="actions">
-          <button mat-button color="primary" (click)="open(e)">Ver</button>
-          <button mat-stroked-button (click)="edit(e)" *ngIf="isAdmin">Editar</button>
-          <button mat-stroked-button color="accent" (click)="editPadron(e)" *ngIf="isAdmin">Editar Padrón</button>
-          <button mat-flat-button color="primary" *ngIf="isAdmin && statuses()[e.id]?.Actions?.CanOpenReg" (click)="openRegistration(e)" matTooltip="Abrir registro">Abrir registro</button>
-          <button mat-flat-button color="primary" *ngIf="isAdmin && statuses()[e.id]?.Actions?.CanReopenReg" (click)="reopenRegistration(e)" matTooltip="Reabrir registro">Reabrir registro</button>
-        </td>
-      </ng-container>
-      <tr mat-header-row *matHeaderRowDef="cols"></tr>
-      <tr mat-row *matRowDef="let row; columns: cols;"></tr>
+  <div class="p-4">
+    <h2 class="text-xl font-semibold mb-2">Historial de elecciones</h2>
+    <table class="w-full text-sm border border-gray-200 rounded-xl overflow-hidden" *ngIf="items().length">
+      <thead class="bg-gray-50 text-gray-600">
+        <tr>
+          <th class="text-left p-2">Nombre</th>
+          <th class="text-left p-2">Fecha</th>
+          <th class="text-left p-2">Estado</th>
+          <th class="text-left p-2">Quórum</th>
+          <th class="w-72 p-2">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let e of items()" class="border-t">
+          <td class="p-2">{{e.name}}</td>
+          <td class="p-2">{{e.scheduledAt | date:'short'}}</td>
+          <td class="p-2">
+            <span class="rounded-full px-2 py-0.5 text-xs"
+                  [ngClass]="{
+                    'bg-green-100 text-green-800': (statuses()[e.id]?.Status||'').toLowerCase()==='votingopen',
+                    'bg-blue-100 text-blue-800': (statuses()[e.id]?.Status||'').toLowerCase()==='registrationopen',
+                    'bg-amber-100 text-amber-800': (statuses()[e.id]?.Status||'').toLowerCase()==='registrationclosed',
+                    'bg-red-100 text-red-800': (statuses()[e.id]?.Status||'').toLowerCase()==='votingclosed',
+                    'bg-violet-100 text-violet-800': (statuses()[e.id]?.Status||'').toLowerCase()==='certified',
+                    'bg-gray-100 text-gray-700': !(statuses()[e.id]?.Status)
+                  }"
+                  [title]="(statuses()[e.id]?.Locked ? 'Registro bloqueado' : 'Registro abierto')">
+              {{statuses()[e.id]?.Status || '...'}}
+            </span>
+          </td>
+          <td class="p-2">{{e.quorumMinimo}}</td>
+          <td class="p-2">
+            <div class="flex flex-wrap gap-2">
+              <button uiBtn="primary" size="sm" (click)="open(e)">Ver</button>
+              <button uiBtn="secondary" size="sm" (click)="edit(e)" *ngIf="isAdmin">Editar</button>
+              <button uiBtn="secondary" size="sm" (click)="editPadron(e)" *ngIf="isAdmin">Editar Padrón</button>
+              <button uiBtn="primary" size="sm" *ngIf="isAdmin && statuses()[e.id]?.Actions?.CanOpenReg" (click)="openRegistration(e)" [title]="'Abrir registro'">Abrir registro</button>
+              <button uiBtn="primary" size="sm" *ngIf="isAdmin && statuses()[e.id]?.Actions?.CanReopenReg" (click)="reopenRegistration(e)" [title]="'Reabrir registro'">Reabrir registro</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
     </table>
     <div *ngIf="!items().length">No hay datos o no tienes permisos.</div>
   </div>
   `,
-  styles: [`.page{ padding:16px } table.full{ width:100% } .actions{ display:flex; gap:8px; flex-wrap:wrap }
-  .chip{border-radius:12px;padding:2px 8px;background:#eee; font-size:12px}
-  .chip.votingopen{background:#c8e6c9}
-  .chip.registrationopen{background:#bbdefb}
-  .chip.registrationclosed{background:#ffe0b2}
-  .chip.votingclosed{background:#ffcdd2}
-  .chip.certified{background:#d1c4e9}
-  `]
+  styles: []
 })
 export class ElectionsComponent {
   private http = inject(HttpClient);
@@ -98,3 +96,4 @@ export class ElectionsComponent {
   openRegistration(row: ElectionDto){ if (!this.isAdmin) return; this.http.post(`/api/elections/${row.id}/status/open-registration`,{}).subscribe({ next: _=> this.load() }); }
   reopenRegistration(row: ElectionDto){ if (!this.isAdmin) return; this.http.post(`/api/elections/${row.id}/status/reopen-registration`,{ confirm:true }).subscribe({ next: _=> this.load() }); }
 }
+
